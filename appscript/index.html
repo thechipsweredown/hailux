@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HaiLux - Quản Lý Công Việc</title>
+<style>
+/* ===== RESET & BASE ===== */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#222;min-height:100vh}
+button{cursor:pointer;border:none;outline:none;font-family:inherit}
+input,select,textarea{font-family:inherit;outline:none;border:1px solid #ddd;border-radius:6px;padding:8px 12px;width:100%}
+input:focus,select:focus,textarea:focus{border-color:#4361ee}
+a{text-decoration:none;color:inherit}
+.hidden{display:none!important}
+
+/* ===== LAYOUT ===== */
+#app{display:flex;min-height:100vh}
+#sidebar{width:220px;background:#1a1a2e;color:#fff;display:flex;flex-direction:column;position:fixed;height:100vh;z-index:100}
+#main{margin-left:220px;flex:1;padding:24px}
+@media(max-width:768px){#sidebar{width:100%;height:auto;position:relative}#main{margin-left:0}}
+
+/* ===== SIDEBAR ===== */
+.sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid rgba(255,255,255,0.1)}
+.sidebar-logo h2{font-size:1.3rem;font-weight:700;color:#e94560}
+.sidebar-logo p{font-size:0.75rem;color:#aaa;margin-top:2px}
+.sidebar-user{padding:12px 20px;font-size:0.85rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,0.1)}
+.sidebar-user strong{color:#fff;display:block}
+nav{flex:1;padding:12px 0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;color:#bbb;font-size:0.9rem;cursor:pointer;transition:all .2s;border-left:3px solid transparent}
+.nav-item:hover{background:rgba(255,255,255,0.05);color:#fff}
+.nav-item.active{background:rgba(233,69,96,0.15);color:#e94560;border-left-color:#e94560}
+.nav-item .icon{font-size:1.1rem;width:20px;text-align:center}
+.sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1)}
+.btn-logout{background:rgba(255,255,255,0.08);color:#ccc;padding:8px 16px;border-radius:6px;font-size:0.85rem;width:100%}
+.btn-logout:hover{background:rgba(233,69,96,0.3);color:#fff}
+
+/* ===== LOGIN ===== */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)}
+.login-card{background:#fff;border-radius:16px;padding:40px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo h1{font-size:2rem;font-weight:800;color:#e94560}
+.login-logo p{color:#888;font-size:0.9rem;margin-top:4px}
+.login-tabs{display:flex;gap:0;margin-bottom:24px;border:1px solid #eee;border-radius:8px;overflow:hidden}
+.login-tab{flex:1;padding:10px;text-align:center;font-size:0.9rem;color:#888;cursor:pointer;transition:.2s}
+.login-tab.active{background:#e94560;color:#fff;font-weight:600}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:0.85rem;font-weight:600;color:#555;margin-bottom:6px}
+.btn-primary{background:#e94560;color:#fff;padding:12px;border-radius:8px;font-size:1rem;font-weight:600;width:100%;margin-top:8px;transition:.2s}
+.btn-primary:hover{background:#c73652}
+.login-error{color:#e94560;font-size:0.85rem;margin-top:8px;text-align:center}
+
+/* ===== PAGE HEADER ===== */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.page-header h1{font-size:1.5rem;font-weight:700;color:#1a1a2e}
+.page-header .subtitle{font-size:0.9rem;color:#888;margin-top:2px}
+
+/* ===== CARDS / STATS ===== */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border-left:4px solid #4361ee}
+.stat-card .stat-value{font-size:2rem;font-weight:700;color:#1a1a2e}
+.stat-card .stat-label{font-size:0.85rem;color:#888;margin-top:4px}
+.stat-card .stat-sub{font-size:0.8rem;color:#aaa;margin-top:2px}
+.stat-card.red{border-left-color:#e94560}
+.stat-card.green{border-left-color:#4CAF50}
+.stat-card.orange{border-left-color:#FF9800}
+.stat-card.blue{border-left-color:#2196F3}
+
+/* ===== TABLE ===== */
+.table-card{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);overflow:hidden}
+.table-toolbar{padding:16px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid #f0f0f0}
+.search-input{max-width:280px;padding:8px 12px;border:1px solid #eee;border-radius:8px;font-size:0.9rem}
+.filter-select{max-width:180px;padding:8px 12px;border:1px solid #eee;border-radius:8px;font-size:0.9rem;background:#fff}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead tr{background:#f8f9ff}
+th{padding:12px 16px;text-align:left;font-size:0.82rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+td{padding:12px 16px;font-size:0.9rem;border-top:1px solid #f5f5f5;vertical-align:middle}
+tr:hover td{background:#fafbff}
+.td-actions{display:flex;gap:8px;white-space:nowrap}
+
+/* ===== BADGES / TAGS ===== */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:0.78rem;font-weight:600;white-space:nowrap}
+.badge-overdue{background:#ffeaea;color:#e94560}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.78rem;font-weight:500}
+
+/* ===== BUTTONS ===== */
+.btn{padding:8px 16px;border-radius:8px;font-size:0.88rem;font-weight:500;transition:.2s;display:inline-flex;align-items:center;gap:6px}
+.btn-sm{padding:5px 10px;font-size:0.8rem;border-radius:6px}
+.btn-blue{background:#4361ee;color:#fff}
+.btn-blue:hover{background:#3451d1}
+.btn-red{background:#e94560;color:#fff}
+.btn-red:hover{background:#c73652}
+.btn-green{background:#4CAF50;color:#fff}
+.btn-green:hover{background:#43a047}
+.btn-outline{background:#fff;border:1px solid #ddd;color:#555}
+.btn-outline:hover{border-color:#4361ee;color:#4361ee}
+.btn-ghost{background:transparent;color:#888;padding:6px 10px;border-radius:6px}
+.btn-ghost:hover{background:#f5f5f5;color:#333}
+
+/* ===== MODAL ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:640px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal-lg{max-width:900px}
+.modal-header{padding:20px 24px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-header h3{font-size:1.1rem;font-weight:700}
+.modal-body{padding:24px;overflow-y:auto;flex:1}
+.modal-footer{padding:16px 24px;border-top:1px solid #f0f0f0;display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+.btn-close{background:none;font-size:1.3rem;color:#aaa;line-height:1}
+.btn-close:hover{color:#333}
+
+/* ===== FORM ===== */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.form-row.single{grid-template-columns:1fr}
+.form-row.triple{grid-template-columns:1fr 1fr 1fr}
+.form-group{margin-bottom:0}
+.form-group label{display:block;font-size:0.83rem;font-weight:600;color:#555;margin-bottom:5px}
+textarea{resize:vertical;min-height:80px}
+.form-hint{font-size:0.78rem;color:#aaa;margin-top:4px}
+
+/* ===== JOB DETAIL ===== */
+.job-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.detail-section{background:#f8f9ff;border-radius:10px;padding:16px}
+.detail-section h4{font-size:0.85rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.detail-row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:0.88rem}
+.detail-row .label{color:#888}
+.detail-row .value{font-weight:500;text-align:right;max-width:60%}
+
+/* ===== TASKS LIST ===== */
+.tasks-section{margin-top:20px}
+.tasks-section h4{font-size:0.95rem;font-weight:700;color:#1a1a2e;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.task-item{background:#f8f9ff;border-radius:10px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;border:1px solid #eee;transition:.2s}
+.task-item:hover{border-color:#4361ee;background:#f0f4ff}
+.task-order{width:28px;height:28px;border-radius:50%;background:#4361ee;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;flex-shrink:0}
+.task-info{flex:1}
+.task-name{font-weight:600;font-size:0.92rem}
+.task-meta{font-size:0.8rem;color:#888;margin-top:3px}
+.task-actions{display:flex;gap:6px;flex-shrink:0}
+
+/* ===== EMPLOYEE VIEW ===== */
+.section-title{font-size:1rem;font-weight:700;color:#1a1a2e;margin:20px 0 12px;display:flex;align-items:center;gap:8px}
+.section-title .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.employee-task-card{background:#fff;border-radius:12px;padding:16px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border-left:4px solid #ddd;cursor:pointer;transition:.2s}
+.employee-task-card:hover{box-shadow:0 4px 16px rgba(0,0,0,0.1);transform:translateY(-1px)}
+.employee-task-card.in-progress{border-left-color:#FF9800}
+.employee-task-card.upcoming{border-left-color:#4361ee}
+.employee-task-card.done{border-left-color:#4CAF50;opacity:.7}
+.employee-task-card.blocked{border-left-color:#ddd;opacity:.6}
+.etc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.etc-name{font-weight:600;font-size:0.95rem}
+.etc-job{font-size:0.82rem;color:#888;margin-bottom:4px}
+.etc-deadline{font-size:0.8rem;color:#888}
+.etc-deadline.overdue{color:#e94560;font-weight:600}
+
+/* ===== IMAGES GRID ===== */
+.images-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:12px}
+.img-thumb{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1;background:#f0f0f0;cursor:pointer}
+.img-thumb img{width:100%;height:100%;object-fit:cover}
+.img-thumb .del-img{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;border-radius:50%;width:22px;height:22px;font-size:0.7rem;display:flex;align-items:center;justify-content:center;opacity:0;transition:.2s}
+.img-thumb:hover .del-img{opacity:1}
+.upload-btn{border:2px dashed #ddd;border-radius:8px;padding:12px;text-align:center;color:#aaa;font-size:0.85rem;cursor:pointer;transition:.2s}
+.upload-btn:hover{border-color:#4361ee;color:#4361ee;background:#f0f4ff}
+
+/* ===== SETTINGS ===== */
+.settings-section{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:20px}
+.settings-section h3{font-size:1rem;font-weight:700;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f0f0f0}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f5f5f5;font-size:0.9rem}
+.settings-row:last-child{border-bottom:none}
+.tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag-item{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:0.82rem;background:#f0f0f0;color:#333}
+.tag-item .dot{width:8px;height:8px;border-radius:50%}
+.tag-item .rm{cursor:pointer;color:#aaa;font-size:0.9rem;line-height:1}
+.tag-item .rm:hover{color:#e94560}
+
+/* ===== TOAST ===== */
+#toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:0.88rem;animation:slideIn .3s ease;max-width:320px;box-shadow:0 4px 16px rgba(0,0,0,0.2)}
+.toast.success{border-left:4px solid #4CAF50}
+.toast.error{border-left:4px solid #e94560}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ===== LOADING ===== */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:#aaa;font-size:0.9rem;gap:8px}
+.spinner{width:20px;height:20px;border:2px solid #eee;border-top-color:#4361ee;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== MISC ===== */
+.money{font-family:monospace;font-weight:600}
+.empty-state{text-align:center;padding:40px;color:#aaa}
+.empty-state .icon{font-size:2.5rem;margin-bottom:8px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:0.8rem;background:#f0f2f5;color:#555}
+.divider{height:1px;background:#f0f0f0;margin:16px 0}
+.text-muted{color:#aaa;font-size:0.85rem}
+.fw-600{font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <h1>HaiLux</h1>
+      <p>Hệ thống quản lý công việc</p>
+    </div>
+    <div class="login-tabs">
+      <div class="login-tab active" onclick="switchLoginTab('manager')">Quản lý</div>
+      <div class="login-tab" onclick="switchLoginTab('employee')">Nhân viên</div>
+    </div>
+    <!-- Manager login -->
+    <div id="tab-manager">
+      <div class="form-group">
+        <label>Mật khẩu</label>
+        <input type="password" id="manager-password" placeholder="Nhập mật khẩu..." onkeydown="if(event.key==='Enter')loginManager()">
+      </div>
+      <button class="btn-primary" onclick="loginManager()">Đăng nhập</button>
+      <p class="login-error hidden" id="manager-error">Mật khẩu không đúng</p>
+    </div>
+    <!-- Employee login -->
+    <div id="tab-employee" class="hidden">
+      <div class="form-group">
+        <label>Chọn tên của bạn</label>
+        <select id="employee-select">
+          <option value="">-- Chọn nhân viên --</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="loginEmployee()">Vào xem việc của tôi</button>
+      <p class="login-error hidden" id="employee-error">Vui lòng chọn tên</p>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" class="hidden">
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div class="sidebar-logo">
+      <h2>HaiLux</h2>
+      <p>Quản lý công việc</p>
+    </div>
+    <div class="sidebar-user">
+      <span class="text-muted">Đăng nhập với</span>
+      <strong id="sidebar-username">—</strong>
+    </div>
+    <nav id="sidebar-nav"></nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()">⬅ Đăng xuất</button>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div id="main">
+    <div id="page-dashboard" class="hidden"></div>
+    <div id="page-jobs" class="hidden"></div>
+    <div id="page-mytasks" class="hidden"></div>
+    <div id="page-settings" class="hidden"></div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="modal-container"></div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<script>
+// ===== STATE =====
+const S = {
+  role: null,       // 'manager' | 'employee'
+  user: null,       // user object
+  page: null,
+  data: {
+    users: [], statuses: [], taskTemplates: [], settings: [],
+    jobs: [], tasks: [],
+  }
+};
+
+// ===== INIT =====
+window.onload = async () => {
+  showLoading();
+  try {
+    await callServer('getInitialData').then(d => {
+      S.data.users = d.users || [];
+      S.data.statuses = d.statuses || [];
+      S.data.taskTemplates = d.taskTemplates || [];
+      S.data.settings = d.settings || [];
+    });
+    populateEmployeeSelect();
+  } catch(e) { showToast('Lỗi kết nối', 'error'); }
+  hideLoading();
+};
+
+function populateEmployeeSelect() {
+  const sel = document.getElementById('employee-select');
+  const employees = S.data.users.filter(u => u.role === 'employee');
+  employees.forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u.id;
+    opt.textContent = u.name;
+    sel.appendChild(opt);
+  });
+}
+
+// ===== AUTH =====
+function switchLoginTab(tab) {
+  document.querySelectorAll('.login-tab').forEach((el,i) => el.classList.toggle('active', (i===0&&tab==='manager')||(i===1&&tab==='employee')));
+  document.getElementById('tab-manager').classList.toggle('hidden', tab !== 'manager');
+  document.getElementById('tab-employee').classList.toggle('hidden', tab !== 'employee');
+}
+
+async function loginManager() {
+  const pw = document.getElementById('manager-password').value;
+  const ok = await callServer('verifyManagerPassword', pw);
+  if (ok) {
+    S.role = 'manager';
+    S.user = { name: 'Quản lý', role: 'manager' };
+    enterApp();
+  } else {
+    document.getElementById('manager-error').classList.remove('hidden');
+  }
+}
+
+function loginEmployee() {
+  const id = document.getElementById('employee-select').value;
+  if (!id) { document.getElementById('employee-error').classList.remove('hidden'); return; }
+  const user = S.data.users.find(u => u.id === id);
+  S.role = 'employee';
+  S.user = user;
+  enterApp();
+}
+
+function enterApp() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('sidebar-username').textContent = S.user.name;
+  buildSidebar();
+  if (S.role === 'manager') navigate('dashboard');
+  else navigate('mytasks');
+}
+
+function logout() {
+  S.role = null; S.user = null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('manager-password').value = '';
+  document.getElementById('manager-error').classList.add('hidden');
+}
+
+// ===== NAVIGATION =====
+const MANAGER_MENU = [
+  { id: 'dashboard', icon: '📊', label: 'Dashboard' },
+  { id: 'jobs',      icon: '👜', label: 'Công việc' },
+  { id: 'settings',  icon: '⚙️', label: 'Cài đặt' },
+];
+const EMPLOYEE_MENU = [
+  { id: 'mytasks', icon: '✅', label: 'Việc của tôi' },
+];
+
+function buildSidebar() {
+  const menu = S.role === 'manager' ? MANAGER_MENU : EMPLOYEE_MENU;
+  const nav = document.getElementById('sidebar-nav');
+  nav.innerHTML = menu.map(m => `
+    <div class="nav-item" id="nav-${m.id}" onclick="navigate('${m.id}')">
+      <span class="icon">${m.icon}</span>${m.label}
+    </div>`).join('');
+}
+
+function navigate(page) {
+  S.page = page;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const nav = document.getElementById(`nav-${page}`);
+  if (nav) nav.classList.add('active');
+  document.querySelectorAll('#main > div').forEach(el => el.classList.add('hidden'));
+  const pageEl = document.getElementById(`page-${page}`);
+  if (pageEl) { pageEl.classList.remove('hidden'); renderPage(page); }
+}
+
+async function renderPage(page) {
+  if (page === 'dashboard') await renderDashboard();
+  else if (page === 'jobs') await renderJobs();
+  else if (page === 'mytasks') await renderMyTasks();
+  else if (page === 'settings') await renderSettings();
+}
+
+// ===== DASHBOARD =====
+async function renderDashboard() {
+  const el = document.getElementById('page-dashboard');
+  el.innerHTML = `<div class="loading"><div class="spinner"></div> Đang tải...</div>`;
+  const stats = await callServer('getDashboardStats');
+  const fmt = n => Number(n).toLocaleString('vi-VN') + 'đ';
+  el.innerHTML = `
+    <div class="page-header">
+      <div><h1>Dashboard</h1><p class="subtitle">Tổng quan công việc</p></div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="stat-value">${stats.jobs.total}</div>
+        <div class="stat-label">Tổng số Job</div>
+        <div class="stat-sub">${stats.jobs.overdue} quá hạn</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-value">${stats.tasks.total}</div>
+        <div class="stat-label">Tổng số Task</div>
+        <div class="stat-sub">${stats.tasks.by_status['Đang làm']||0} đang làm</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-value money">${fmt(stats.revenue.total)}</div>
+        <div class="stat-label">Tổng doanh thu</div>
+        <div class="stat-sub money" style="color:#4CAF50">${fmt(stats.revenue.completed)} hoàn thành</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-value">${stats.jobs.overdue}</div>
+        <div class="stat-label">Job quá hạn</div>
+        <div class="stat-sub">Cần xử lý ngay</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="table-card" style="padding:20px">
+        <h3 style="font-size:.95rem;font-weight:700;margin-bottom:14px">📋 Trạng thái Job</h3>
+        ${Object.entries(stats.jobs.by_status).map(([label,count]) => {
+          const s = S.data.statuses.find(s=>s.entity_type==='job'&&s.label===label);
+          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5">
+            <span style="display:flex;align-items:center;gap:8px">
+              <span style="width:10px;height:10px;border-radius:50%;background:${s?.color||'#ccc'};display:inline-block"></span>
+              ${label}
+            </span>
+            <strong>${count}</strong>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="table-card" style="padding:20px">
+        <h3 style="font-size:.95rem;font-weight:700;margin-bottom:14px">✅ Trạng thái Task</h3>
+        ${Object.entries(stats.tasks.by_status).map(([label,count]) => {
+          const s = S.data.statuses.find(s=>s.entity_type==='task'&&s.label===label);
+          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5">
+            <span style="display:flex;align-items:center;gap:8px">
+              <span style="width:10px;height:10px;border-radius:50%;background:${s?.color||'#ccc'};display:inline-block"></span>
+              ${label}
+            </span>
+            <strong>${count}</strong>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-toolbar"><strong>👥 Thống kê nhân viên</strong></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nhân viên</th><th>Tổng task</th><th>Đang làm</th><th>Chưa làm</th><th>Hoàn thành</th></tr></thead>
+          <tbody>${stats.employees.map(e=>`
+            <tr>
+              <td><strong>${e.name}</strong></td>
+              <td>${e.total}</td>
+              <td><span class="badge" style="background:#fff3e0;color:#FF9800">${e.in_progress}</span></td>
+              <td>${e.todo}</td>
+              <td><span class="badge" style="background:#e8f5e9;color:#4CAF50">${e.done}</span></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ===== JOBS PAGE =====
+let jobsData = [];
+let jobsFilter = { search: '', status: '' };
+
+async function renderJobs() {
+  jobsData = await callServer('getJobs');
+  S.data.jobs = jobsData;
+  const el = document.getElementById('page-jobs');
+  const jobStatuses = S.data.statuses.filter(s => s.entity_type === 'job');
+
+  el.innerHTML = `
+    <div class="page-header">
+      <div><h1>Công việc (Jobs)</h1><p class="subtitle">Quản lý tất cả job</p></div>
+      <button class="btn btn-blue" onclick="openJobModal()">＋ Thêm Job</button>
+    </div>
+    <div class="table-card">
+      <div class="table-toolbar">
+        <input class="search-input" type="text" placeholder="Tìm mã / tên / khách hàng..." oninput="filterJobs()" id="job-search">
+        <select class="filter-select" onchange="filterJobs()" id="job-filter-status">
+          <option value="">Tất cả trạng thái</option>
+          ${jobStatuses.map(s=>`<option value="${s.id}">${s.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã</th><th>Tên SP</th><th>Khách hàng</th><th>Deadline</th><th>Doanh thu</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+          <tbody id="jobs-tbody"></tbody>
+        </table>
+      </div>
+    </div>`;
+  renderJobsTable();
+}
+
+function filterJobs() {
+  jobsFilter.search = document.getElementById('job-search').value.toLowerCase();
+  jobsFilter.status = document.getElementById('job-filter-status').value;
+  renderJobsTable();
+}
+
+function renderJobsTable() {
+  const filtered = jobsData.filter(j => {
+    const matchSearch = !jobsFilter.search ||
+      (j.code||'').toLowerCase().includes(jobsFilter.search) ||
+      (j.name||'').toLowerCase().includes(jobsFilter.search) ||
+      (j.customer_name||'').toLowerCase().includes(jobsFilter.search);
+    const matchStatus = !jobsFilter.status || j.status_id === jobsFilter.status;
+    return matchSearch && matchStatus;
+  });
+
+  const tbody = document.getElementById('jobs-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📭</div>Không có job nào</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(j => {
+    const status = S.data.statuses.find(s => s.id === j.status_id);
+    const isOverdue = j.deadline && new Date(j.deadline) < new Date() && status?.label !== 'Hoàn thành';
+    return `
+      <tr>
+        <td><strong>${j.code||'—'}</strong></td>
+        <td>${j.name||'—'}</td>
+        <td>${j.customer_name||'—'}</td>
+        <td>
+          ${j.deadline ? `<span class="${isOverdue?'badge badge-overdue':''}">${fmtDate(j.deadline)}</span>` : '—'}
+        </td>
+        <td><span class="money">${j.revenue ? Number(j.revenue).toLocaleString('vi-VN')+'đ' : '—'}</span></td>
+        <td>${status ? `<span class="badge" style="background:${status.color}22;color:${status.color}">${status.label}</span>` : '—'}</td>
+        <td>
+          <div class="td-actions">
+            <button class="btn btn-sm btn-outline" onclick="openJobDetail('${j.id}')">📋 Chi tiết</button>
+            <button class="btn btn-sm btn-outline" onclick="openJobModal('${j.id}')">✏️</button>
+            <button class="btn btn-sm btn-ghost" onclick="confirmDeleteJob('${j.id}')">🗑</button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+// ===== JOB MODAL (Create/Edit) =====
+function openJobModal(jobId) {
+  const job = jobId ? jobsData.find(j => j.id === jobId) : null;
+  const jobStatuses = S.data.statuses.filter(s => s.entity_type === 'job');
+  const title = job ? 'Sửa Job' : 'Thêm Job mới';
+
+  showModal(`
+    <div class="modal-header">
+      <h3>${title}</h3>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Mã sản phẩm *</label>
+          <input id="f-code" value="${job?.code||''}" placeholder="KL001">
+        </div>
+        <div class="form-group">
+          <label>Phân loại</label>
+          <select id="f-category">
+            <option ${job?.category==='Khách lẻ'?'selected':''}>Khách lẻ</option>
+            <option ${job?.category==='Khách sỉ'?'selected':''}>Khách sỉ</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label>Tên sản phẩm *</label>
+          <input id="f-name" value="${job?.name||''}" placeholder="Túi Hermès Birkin 30">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tên khách hàng</label>
+          <input id="f-customer-name" value="${job?.customer_name||''}" placeholder="Nguyễn Quỳnh Mai">
+        </div>
+        <div class="form-group">
+          <label>Liên hệ (SĐT/Zalo/Page)</label>
+          <input id="f-customer-contact" value="${job?.customer_contact||''}" placeholder="0912345678">
+        </div>
+      </div>
+      <div class="form-row triple">
+        <div class="form-group">
+          <label>Ngày nhận</label>
+          <input type="date" id="f-received-date" value="${fmtDateInput(job?.received_date)}">
+        </div>
+        <div class="form-group">
+          <label>Deadline</label>
+          <input type="date" id="f-deadline" value="${fmtDateInput(job?.deadline)}">
+        </div>
+        <div class="form-group">
+          <label>Báo giá (đ)</label>
+          <input type="number" id="f-revenue" value="${job?.revenue||''}" placeholder="1500000">
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label>Hạng mục sửa</label>
+          <textarea id="f-repair-scope" placeholder="- Thay da toàn bộ&#10;- Mạ khóa mới&#10;- Dán seal">${job?.repair_scope||''}</textarea>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Trạng thái</label>
+          <select id="f-status">
+            ${jobStatuses.map(s=>`<option value="${s.id}" ${job?.status_id===s.id?'selected':''}>${s.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ghi chú</label>
+          <input id="f-notes" value="${job?.notes||''}" placeholder="">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Hủy</button>
+      <button class="btn btn-blue" onclick="saveJob('${jobId||''}')">💾 Lưu</button>
+    </div>`);
+}
+
+async function saveJob(jobId) {
+  const data = {
+    code: v('f-code'), name: v('f-name'), category: v('f-category'),
+    customer_name: v('f-customer-name'), customer_contact: v('f-customer-contact'),
+    received_date: v('f-received-date'), deadline: v('f-deadline'),
+    revenue: v('f-revenue'), repair_scope: v('f-repair-scope'),
+    status_id: v('f-status'), notes: v('f-notes'),
+  };
+  if (!data.code || !data.name) { showToast('Vui lòng nhập mã và tên sản phẩm', 'error'); return; }
+  try {
+    if (jobId) await callServer('updateJob', jobId, data);
+    else await callServer('createJob', data);
+    showToast(jobId ? 'Đã cập nhật job' : 'Đã tạo job mới', 'success');
+    closeModal();
+    renderJobs();
+  } catch(e) { showToast('Lỗi lưu dữ liệu', 'error'); }
+}
+
+async function confirmDeleteJob(jobId) {
+  if (!confirm('Xóa job này sẽ xóa tất cả task liên quan. Xác nhận?')) return;
+  await callServer('deleteJob', jobId);
+  showToast('Đã xóa job', 'success');
+  renderJobs();
+}
+
+// ===== JOB DETAIL =====
+async function openJobDetail(jobId) {
+  showModal(`<div class="loading"><div class="spinner"></div> Đang tải...</div>`, true);
+  const job = await callServer('getJobWithDetails', jobId);
+  const jobStatuses = S.data.statuses.filter(s => s.entity_type === 'job');
+  const taskStatuses = S.data.statuses.filter(s => s.entity_type === 'task');
+  const isOverdue = job.deadline && new Date(job.deadline) < new Date() && job.status?.label !== 'Hoàn thành';
+
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" id="modal-overlay" onclick="if(event.target.id==='modal-overlay')closeModal()">
+      <div class="modal modal-lg">
+        <div class="modal-header">
+          <h3>📋 ${job.code} — ${job.name}</h3>
+          <button class="btn-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <!-- Job info -->
+          <div class="job-detail-grid">
+            <div class="detail-section">
+              <h4>Thông tin</h4>
+              <div class="detail-row"><span class="label">Mã SP</span><span class="value fw-600">${job.code||'—'}</span></div>
+              <div class="detail-row"><span class="label">Khách hàng</span><span class="value">${job.customer_name||'—'}</span></div>
+              <div class="detail-row"><span class="label">Liên hệ</span><span class="value">${job.customer_contact||'—'}</span></div>
+              <div class="detail-row"><span class="label">Phân loại</span><span class="value">${job.category||'—'}</span></div>
+              <div class="detail-row"><span class="label">Báo giá</span><span class="value money">${job.revenue?Number(job.revenue).toLocaleString('vi-VN')+'đ':'—'}</span></div>
+            </div>
+            <div class="detail-section">
+              <h4>Tiến độ</h4>
+              <div class="detail-row"><span class="label">Ngày nhận</span><span class="value">${fmtDate(job.received_date)}</span></div>
+              <div class="detail-row"><span class="label">Deadline</span><span class="value ${isOverdue?'badge badge-overdue':''}">${fmtDate(job.deadline)||'—'}</span></div>
+              <div class="detail-row"><span class="label">Trạng thái</span><span class="value">
+                ${job.status?`<span class="badge" style="background:${job.status.color}22;color:${job.status.color}">${job.status.label}</span>`:'—'}
+              </span></div>
+              <div class="detail-row"><span class="label">Trạng thái</span>
+                <select onchange="updateJobStatusInline('${job.id}', this.value)" style="width:auto;padding:4px 8px;font-size:.85rem">
+                  ${jobStatuses.map(s=>`<option value="${s.id}" ${job.status_id===s.id?'selected':''}>${s.label}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+          </div>
+          ${job.repair_scope ? `<div class="detail-section" style="margin-top:12px">
+            <h4>Hạng mục sửa</h4>
+            <p style="font-size:.88rem;white-space:pre-line;color:#444">${job.repair_scope}</p>
+          </div>` : ''}
+
+          <!-- Job images -->
+          <div class="tasks-section">
+            <h4>🖼 Hình ảnh Job
+              <button class="btn btn-sm btn-outline" onclick="triggerImageUpload('job','${job.id}','job-imgs')">＋ Thêm ảnh</button>
+            </h4>
+            <div class="images-grid" id="job-imgs">
+              ${job.images.map(img=>`
+                <div class="img-thumb" onclick="viewImage('${img.drive_url}')">
+                  <img src="${img.drive_url}" loading="lazy">
+                  <div class="del-img" onclick="event.stopPropagation();deleteImg('${img.id}','job-imgs','job','${job.id}')">✕</div>
+                </div>`).join('')}
+            </div>
+            <input type="file" id="img-upload-input" accept="image/*" multiple style="display:none" onchange="handleImageUpload(event)">
+          </div>
+
+          <!-- Tasks -->
+          <div class="tasks-section">
+            <h4>📌 Danh sách Task (${job.tasks.length})
+              <button class="btn btn-sm btn-blue" onclick="openAddTaskModal('${job.id}')">＋ Thêm Task</button>
+            </h4>
+            <div id="tasks-list-${job.id}">
+              ${renderTasksList(job.tasks, taskStatuses, job)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderTasksList(tasks, taskStatuses, job) {
+  if (!tasks.length) return `<div class="empty-state"><div class="icon">📋</div>Chưa có task nào</div>`;
+  return tasks.map((t,i) => {
+    const status = taskStatuses.find(s => s.id === t.status_id);
+    const assignee = S.data.users.find(u => u.id === t.assignee_id);
+    const deadline = t.deadline || job?.deadline;
+    const isOverdue = deadline && new Date(deadline) < new Date() && status?.label !== 'Hoàn thành';
+    return `
+      <div class="task-item">
+        <div class="task-order">${t.order||i+1}</div>
+        <div class="task-info">
+          <div class="task-name">${t.name||'—'}</div>
+          <div class="task-meta">
+            👤 ${assignee?.name||'Chưa phân công'}
+            · ⏰ ${deadline?fmtDate(deadline):'Theo job'}
+            ${t.notes?`· 📝 ${t.notes}`:''}
+          </div>
+        </div>
+        <div class="task-actions">
+          ${status?`<span class="badge" style="background:${status.color}22;color:${status.color}">${status.label}</span>`:''}
+          <button class="btn btn-sm btn-outline" onclick="openTaskImages('${t.id}','${t.name}')">🖼 ${t.images?.length||0}</button>
+          <button class="btn btn-sm btn-outline" onclick="openEditTaskModal('${t.id}','${job.id}')">✏️</button>
+          <button class="btn btn-sm btn-ghost" onclick="confirmDeleteTask('${t.id}','${job.id}')">🗑</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function updateJobStatusInline(jobId, statusId) {
+  await callServer('updateJob', jobId, { status_id: statusId });
+  showToast('Đã cập nhật trạng thái', 'success');
+  renderJobs();
+}
+
+// ===== TASK MODAL =====
+function openAddTaskModal(jobId) {
+  const taskStatuses = S.data.statuses.filter(s => s.entity_type === 'task');
+  const employees = S.data.users.filter(u => u.role === 'employee');
+  showModal(`
+    <div class="modal-header">
+      <h3>＋ Thêm Task</h3>
+      <button class="btn-close" onclick="closeModal();openJobDetail('${jobId}')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row single">
+        <div class="form-group">
+          <label>Tên task *</label>
+          <input id="t-name" list="task-templates-list" placeholder="Chọn hoặc nhập tên task">
+          <datalist id="task-templates-list">
+            ${S.data.taskTemplates.map(t=>`<option value="${t.name}">`).join('')}
+          </datalist>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Người thực hiện</label>
+          <select id="t-assignee">
+            <option value="">-- Chọn nhân viên --</option>
+            ${employees.map(u=>`<option value="${u.id}">${u.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Thứ tự</label>
+          <input type="number" id="t-order" value="1" min="1">
+          <p class="form-hint">Task theo thứ tự từ nhỏ → lớn</p>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Deadline riêng (để trống = theo Job)</label>
+          <input type="date" id="t-deadline">
+        </div>
+        <div class="form-group">
+          <label>Trạng thái</label>
+          <select id="t-status">
+            ${taskStatuses.map(s=>`<option value="${s.id}">${s.label}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label>Ghi chú</label>
+          <textarea id="t-notes" placeholder="Lưu ý kỹ thuật..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal();openJobDetail('${jobId}')">Hủy</button>
+      <button class="btn btn-blue" onclick="saveTask(null,'${jobId}')">💾 Lưu</button>
+    </div>`);
+}
+
+function openEditTaskModal(taskId, jobId) {
+  callServer('getTaskById', taskId).then(t => {
+    if (!t) return;
+    const taskStatuses = S.data.statuses.filter(s => s.entity_type === 'task');
+    const employees = S.data.users.filter(u => u.role === 'employee');
+    showModal(`
+      <div class="modal-header">
+        <h3>✏️ Sửa Task</h3>
+        <button class="btn-close" onclick="closeModal();openJobDetail('${jobId}')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row single">
+          <div class="form-group">
+            <label>Tên task *</label>
+            <input id="t-name" value="${t.name||''}" list="task-templates-list">
+            <datalist id="task-templates-list">
+              ${S.data.taskTemplates.map(tt=>`<option value="${tt.name}">`).join('')}
+            </datalist>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Người thực hiện</label>
+            <select id="t-assignee">
+              <option value="">-- Chọn nhân viên --</option>
+              ${employees.map(u=>`<option value="${u.id}" ${t.assignee_id===u.id?'selected':''}>${u.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Thứ tự</label>
+            <input type="number" id="t-order" value="${t.order||1}" min="1">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Deadline riêng</label>
+            <input type="date" id="t-deadline" value="${fmtDateInput(t.deadline)}">
+          </div>
+          <div class="form-group">
+            <label>Trạng thái</label>
+            <select id="t-status">
+              ${taskStatuses.map(s=>`<option value="${s.id}" ${t.status_id===s.id?'selected':''}>${s.label}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="form-group">
+            <label>Ghi chú</label>
+            <textarea id="t-notes">${t.notes||''}</textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal();openJobDetail('${jobId}')">Hủy</button>
+        <button class="btn btn-blue" onclick="saveTask('${taskId}','${jobId}')">💾 Lưu</button>
+      </div>`);
+  });
+}
+
+async function saveTask(taskId, jobId) {
+  const data = {
+    job_id: jobId,
+    name: v('t-name'), order: Number(v('t-order')) || 1,
+    assignee_id: v('t-assignee'), deadline: v('t-deadline'),
+    status_id: v('t-status'), notes: v('t-notes'),
+  };
+  if (!data.name) { showToast('Vui lòng nhập tên task', 'error'); return; }
+  if (taskId) await callServer('updateTask', taskId, data);
+  else await callServer('createTask', data);
+  showToast(taskId ? 'Đã cập nhật task' : 'Đã thêm task', 'success');
+  closeModal();
+  openJobDetail(jobId);
+}
+
+async function confirmDeleteTask(taskId, jobId) {
+  if (!confirm('Xóa task này?')) return;
+  await callServer('deleteTask', taskId);
+  showToast('Đã xóa task', 'success');
+  openJobDetail(jobId);
+}
+
+// ===== TASK IMAGES =====
+let _imgUploadCtx = {};
+
+function triggerImageUpload(entityType, entityId, gridId) {
+  _imgUploadCtx = { entityType, entityId, gridId };
+  document.getElementById('img-upload-input').click();
+}
+
+async function handleImageUpload(event) {
+  const files = event.target.files;
+  if (!files.length) return;
+  const { entityType, entityId, gridId } = _imgUploadCtx;
+  for (const file of files) {
+    showToast(`Đang tải ${file.name}...`);
+    const base64 = await fileToBase64(file);
+    const img = await callServer('uploadImage', base64, file.type, file.name, entityType, entityId, S.user.name || 'Quản lý', '');
+    const grid = document.getElementById(gridId);
+    if (grid) {
+      const div = document.createElement('div');
+      div.className = 'img-thumb';
+      div.innerHTML = `<img src="${img.drive_url}" loading="lazy"><div class="del-img" onclick="deleteImg('${img.id}','${gridId}','${entityType}','${entityId}')">✕</div>`;
+      div.querySelector('img').onclick = () => viewImage(img.drive_url);
+      grid.appendChild(div);
+    }
+    showToast('Đã tải ảnh lên', 'success');
+  }
+  event.target.value = '';
+}
+
+async function openTaskImages(taskId, taskName) {
+  const images = await callServer('getImages', 'task', taskId);
+  showModal(`
+    <div class="modal-header">
+      <h3>🖼 Ảnh evidence: ${taskName}</h3>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <button class="btn btn-outline" onclick="triggerTaskImgUpload('${taskId}')">＋ Tải ảnh lên</button>
+      <input type="file" id="task-img-input" accept="image/*" multiple style="display:none">
+      <div class="images-grid" id="task-img-grid-${taskId}" style="margin-top:12px">
+        ${images.map(img=>`
+          <div class="img-thumb" onclick="viewImage('${img.drive_url}')">
+            <img src="${img.drive_url}" loading="lazy">
+            <div class="del-img" onclick="event.stopPropagation();deleteImg('${img.id}','task-img-grid-${taskId}','task','${taskId}')">✕</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">Đóng</button></div>`);
+
+  document.getElementById('task-img-input').addEventListener('change', async e => {
+    for (const file of e.target.files) {
+      const base64 = await fileToBase64(file);
+      const img = await callServer('uploadImage', base64, file.type, file.name, 'task', taskId, S.user.name||'', '');
+      const grid = document.getElementById(`task-img-grid-${taskId}`);
+      if (grid) {
+        const div = document.createElement('div');
+        div.className = 'img-thumb';
+        div.innerHTML = `<img src="${img.drive_url}" loading="lazy"><div class="del-img" onclick="deleteImg('${img.id}','task-img-grid-${taskId}','task','${taskId}')">✕</div>`;
+        div.querySelector('img').onclick = () => viewImage(img.drive_url);
+        grid.appendChild(div);
+      }
+    }
+    showToast('Đã tải ảnh', 'success');
+  });
+}
+
+function triggerTaskImgUpload(taskId) {
+  document.getElementById('task-img-input').click();
+}
+
+async function deleteImg(imgId, gridId, entityType, entityId) {
+  if (!confirm('Xóa ảnh này?')) return;
+  await callServer('deleteImage', imgId);
+  const grid = document.getElementById(gridId);
+  if (grid) {
+    const imgs = await callServer('getImages', entityType, entityId);
+    grid.innerHTML = imgs.map(img=>`
+      <div class="img-thumb" onclick="viewImage('${img.drive_url}')">
+        <img src="${img.drive_url}" loading="lazy">
+        <div class="del-img" onclick="event.stopPropagation();deleteImg('${img.id}','${gridId}','${entityType}','${entityId}')">✕</div>
+      </div>`).join('');
+  }
+  showToast('Đã xóa ảnh', 'success');
+}
+
+function viewImage(url) {
+  window.open(url, '_blank');
+}
+
+// ===== MY TASKS (EMPLOYEE) =====
+async function renderMyTasks() {
+  const el = document.getElementById('page-mytasks');
+  el.innerHTML = `<div class="loading"><div class="spinner"></div> Đang tải...</div>`;
+  const tasks = await callServer('getEnrichedTasksForAssignee', S.user.id);
+  const taskStatuses = S.data.statuses.filter(s => s.entity_type === 'task');
+
+  const groups = {
+    in_progress: { label: 'Đang làm', dot: '#FF9800', tasks: [] },
+    upcoming:    { label: 'Sắp đến lượt', dot: '#4361ee', tasks: [] },
+    ready:       { label: 'Có thể làm', dot: '#4CAF50', tasks: [] },
+    blocked:     { label: 'Chưa đến lượt', dot: '#ccc', tasks: [] },
+    done:        { label: 'Đã hoàn thành', dot: '#4CAF50', tasks: [] },
+  };
+  tasks.forEach(t => { if (groups[t.availability]) groups[t.availability].tasks.push(t); });
+
+  el.innerHTML = `
+    <div class="page-header">
+      <div><h1>Việc của ${S.user.name}</h1><p class="subtitle">Tổng: ${tasks.length} task</p></div>
+      <button class="btn btn-outline" onclick="renderMyTasks()">🔄 Làm mới</button>
+    </div>
+    ${Object.entries(groups).filter(([,g])=>g.tasks.length>0).map(([key,g])=>`
+      <div class="section-title">
+        <span class="dot" style="background:${g.dot}"></span>
+        ${g.label} <span class="chip">${g.tasks.length}</span>
+      </div>
+      ${g.tasks.map(t => renderEmployeeTaskCard(t, taskStatuses, key)).join('')}
+    `).join('')}
+    ${!tasks.length ? `<div class="empty-state" style="margin-top:60px"><div class="icon">🎉</div><p>Không có task nào được giao</p></div>` : ''}`;
+}
+
+function renderEmployeeTaskCard(t, taskStatuses, group) {
+  const deadline = t.effective_deadline;
+  const isOverdue = deadline && new Date(deadline) < new Date() && t.status?.label !== 'Hoàn thành';
+  return `
+    <div class="employee-task-card ${group}" onclick="openEmployeeTaskModal('${t.id}')">
+      <div class="etc-header">
+        <span class="etc-name">${t.name||'—'}</span>
+        ${t.status?`<span class="badge" style="background:${t.status.color}22;color:${t.status.color}">${t.status.label}</span>`:''}
+      </div>
+      <div class="etc-job">👜 ${t.job?.code||''} ${t.job?.name||'—'}</div>
+      <div class="etc-deadline ${isOverdue?'overdue':''}">
+        ⏰ ${deadline?fmtDate(deadline):'Không có deadline'}
+        ${isOverdue?'· ⚠️ Quá hạn':''}
+        ${t.prev_task?`· Sau: ${t.prev_task.name}`:''}
+      </div>
+    </div>`;
+}
+
+async function openEmployeeTaskModal(taskId) {
+  const task = await callServer('getTaskById', taskId);
+  if (!task) return;
+  const taskStatuses = S.data.statuses.filter(s => s.entity_type === 'task');
+  const images = await callServer('getImages', 'task', taskId);
+  const status = taskStatuses.find(s => s.id === task.status_id);
+  const doneStatus = taskStatuses.find(s => s.label === 'Hoàn thành');
+  const inProgStatus = taskStatuses.find(s => s.label === 'Đang làm');
+
+  showModal(`
+    <div class="modal-header">
+      <h3>${task.name}</h3>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      ${status?`<div style="margin-bottom:16px"><span class="badge" style="background:${status.color}22;color:${status.color};font-size:.9rem;padding:6px 14px">${status.label}</span></div>`:''}
+      ${task.notes?`<div class="detail-section" style="margin-bottom:16px"><h4>Ghi chú</h4><p style="font-size:.88rem;white-space:pre-line">${task.notes}</p></div>`:''}
+      <div class="divider"></div>
+      <div style="margin-bottom:16px">
+        <div class="form-group">
+          <label>Ghi chú thêm khi làm</label>
+          <textarea id="emp-notes" placeholder="Ghi lại vấn đề, lưu ý khi làm...">${task.notes||''}</textarea>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <strong style="font-size:.9rem">🖼 Ảnh evidence (${images.length})</strong>
+          <button class="btn btn-sm btn-outline" onclick="document.getElementById('emp-img-input').click()">＋ Tải ảnh</button>
+        </div>
+        <input type="file" id="emp-img-input" accept="image/*" multiple style="display:none" onchange="handleEmpImgUpload(event,'${taskId}')">
+        <div class="images-grid" id="emp-img-grid">
+          ${images.map(img=>`<div class="img-thumb" onclick="viewImage('${img.drive_url}')"><img src="${img.drive_url}" loading="lazy"></div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-outline" onclick="closeModal()">Đóng</button>
+      <div style="display:flex;gap:8px">
+        ${inProgStatus && status?.label !== 'Đang làm' && status?.label !== 'Hoàn thành' ?
+          `<button class="btn btn-outline" style="border-color:#FF9800;color:#FF9800" onclick="empUpdateTaskStatus('${taskId}','${inProgStatus.id}')">▶ Bắt đầu làm</button>` : ''}
+        ${doneStatus && status?.label !== 'Hoàn thành' ?
+          `<button class="btn btn-green" onclick="empUpdateTaskStatus('${taskId}','${doneStatus.id}')">✓ Hoàn thành</button>` : ''}
+        <button class="btn btn-blue" onclick="empSaveNotes('${taskId}')">💾 Lưu ghi chú</button>
+      </div>
+    </div>`);
+}
+
+async function empUpdateTaskStatus(taskId, statusId) {
+  const task = await callServer('getTaskById', taskId);
+  await callServer('updateTask', taskId, { status_id: statusId, job_id: task.job_id });
+  showToast('Đã cập nhật trạng thái', 'success');
+  closeModal();
+  renderMyTasks();
+}
+
+async function empSaveNotes(taskId) {
+  const notes = v('emp-notes');
+  const task = await callServer('getTaskById', taskId);
+  await callServer('updateTask', taskId, { notes, job_id: task.job_id });
+  showToast('Đã lưu ghi chú', 'success');
+  closeModal();
+}
+
+async function handleEmpImgUpload(event, taskId) {
+  for (const file of event.target.files) {
+    const base64 = await fileToBase64(file);
+    const img = await callServer('uploadImage', base64, file.type, file.name, 'task', taskId, S.user.name||'', '');
+    const grid = document.getElementById('emp-img-grid');
+    if (grid) {
+      const div = document.createElement('div');
+      div.className = 'img-thumb';
+      div.innerHTML = `<img src="${img.drive_url}" loading="lazy">`;
+      div.onclick = () => viewImage(img.drive_url);
+      grid.appendChild(div);
+    }
+  }
+  showToast('Đã tải ảnh', 'success');
+}
+
+// ===== SETTINGS =====
+async function renderSettings() {
+  const el = document.getElementById('page-settings');
+  el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+  const users = await callServer('getUsers');
+  S.data.users = users;
+  const statuses = await callServer('getStatuses');
+  S.data.statuses = statuses;
+  const templates = await callServer('getTaskTemplates');
+  S.data.taskTemplates = templates;
+  const settings = await callServer('getSettings');
+  S.data.settings = settings;
+  const pwSetting = settings.find(s => s.key === 'manager_password');
+  const employees = users.filter(u => u.role === 'employee');
+  const jobStatuses = statuses.filter(s => s.entity_type === 'job');
+  const taskStatuses = statuses.filter(s => s.entity_type === 'task');
+
+  el.innerHTML = `
+    <div class="page-header"><div><h1>Cài đặt</h1></div></div>
+
+    <!-- General -->
+    <div class="settings-section">
+      <h3>🔐 Bảo mật</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="new-password" type="password" placeholder="Mật khẩu mới..." style="max-width:240px">
+        <button class="btn btn-blue" onclick="changePassword()">Đổi mật khẩu</button>
+      </div>
+    </div>
+
+    <!-- Users -->
+    <div class="settings-section">
+      <h3>👥 Nhân viên (${employees.length})</h3>
+      <div id="users-list">
+        ${employees.map(u=>`
+          <div class="settings-row" id="user-row-${u.id}">
+            <span>${u.name}</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-sm btn-outline" onclick="toggleManagerRole('${u.id}','${u.name}','${u.role}')">
+                ${u.role==='manager'?'👑 Manager':'Promote Manager'}
+              </button>
+              <button class="btn btn-sm btn-ghost" onclick="deleteUserFromSettings('${u.id}')">🗑</button>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <input id="new-user-name" placeholder="Tên nhân viên mới..." style="max-width:200px">
+        <button class="btn btn-blue" onclick="addUser()">＋ Thêm</button>
+      </div>
+    </div>
+
+    <!-- Job Statuses -->
+    <div class="settings-section">
+      <h3>🏷 Trạng thái Job</h3>
+      <div class="tag-list">
+        ${jobStatuses.map(s=>`
+          <div class="tag-item">
+            <span class="dot" style="background:${s.color}"></span>
+            ${s.label}
+            <span class="rm" onclick="deleteStatus('${s.id}')">✕</span>
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+        <input id="new-job-status-label" placeholder="Tên trạng thái..." style="max-width:160px">
+        <input type="color" id="new-job-status-color" value="#607D8B" style="width:40px;padding:2px;border-radius:4px">
+        <button class="btn btn-sm btn-outline" onclick="addStatus('job')">＋ Thêm</button>
+      </div>
+    </div>
+
+    <!-- Task Statuses -->
+    <div class="settings-section">
+      <h3>🏷 Trạng thái Task</h3>
+      <div class="tag-list">
+        ${taskStatuses.map(s=>`
+          <div class="tag-item">
+            <span class="dot" style="background:${s.color}"></span>
+            ${s.label}
+            <span class="rm" onclick="deleteStatus('${s.id}')">✕</span>
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+        <input id="new-task-status-label" placeholder="Tên trạng thái..." style="max-width:160px">
+        <input type="color" id="new-task-status-color" value="#607D8B" style="width:40px;padding:2px;border-radius:4px">
+        <button class="btn btn-sm btn-outline" onclick="addStatus('task')">＋ Thêm</button>
+      </div>
+    </div>
+
+    <!-- Task Templates -->
+    <div class="settings-section">
+      <h3>📋 Mẫu Task (${templates.length})</h3>
+      <div class="tag-list" id="tmpl-list">
+        ${templates.map(t=>`
+          <div class="tag-item">
+            ${t.name}
+            <span class="rm" onclick="deleteTemplate('${t.id}')">✕</span>
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input id="new-tmpl-name" placeholder="Tên task mẫu..." style="max-width:200px">
+        <button class="btn btn-sm btn-outline" onclick="addTemplate()">＋ Thêm</button>
+      </div>
+    </div>
+
+    <!-- Setup button -->
+    <div class="settings-section">
+      <h3>🔧 Khởi tạo hệ thống</h3>
+      <p class="text-muted" style="margin-bottom:10px">Tạo tất cả sheet cần thiết, seed dữ liệu mặc định. Chạy 1 lần khi setup lần đầu.</p>
+      <button class="btn btn-outline" onclick="runSetup()">▶ Chạy Setup</button>
+    </div>`;
+}
+
+async function changePassword() {
+  const pw = v('new-password');
+  if (!pw) { showToast('Nhập mật khẩu mới', 'error'); return; }
+  await callServer('updateSetting', 'manager_password', pw);
+  showToast('Đã đổi mật khẩu', 'success');
+  document.getElementById('new-password').value = '';
+}
+
+async function addUser() {
+  const name = v('new-user-name').trim();
+  if (!name) return;
+  const user = await callServer('createUser', { name, role: 'employee' });
+  S.data.users.push(user);
+  showToast('Đã thêm nhân viên', 'success');
+  renderSettings();
+}
+
+async function deleteUserFromSettings(id) {
+  if (!confirm('Xóa nhân viên này?')) return;
+  await callServer('deleteUser', id);
+  showToast('Đã xóa nhân viên', 'success');
+  renderSettings();
+}
+
+async function toggleManagerRole(id, name, currentRole) {
+  const newRole = currentRole === 'manager' ? 'employee' : 'manager';
+  await callServer('updateUser', id, { role: newRole });
+  showToast(`Đã cập nhật role cho ${name}`, 'success');
+  renderSettings();
+}
+
+async function addStatus(entityType) {
+  const label = v(`new-${entityType}-status-label`).trim();
+  const color = v(`new-${entityType}-status-color`);
+  if (!label) return;
+  const existing = S.data.statuses.filter(s => s.entity_type === entityType);
+  await callServer('createStatus', { entity_type: entityType, label, color, order: existing.length + 1 });
+  showToast('Đã thêm trạng thái', 'success');
+  renderSettings();
+}
+
+async function deleteStatus(id) {
+  if (!confirm('Xóa trạng thái này?')) return;
+  await callServer('deleteStatus', id);
+  showToast('Đã xóa', 'success');
+  renderSettings();
+}
+
+async function addTemplate() {
+  const name = v('new-tmpl-name').trim();
+  if (!name) return;
+  await callServer('createTaskTemplate', { name });
+  showToast('Đã thêm mẫu task', 'success');
+  renderSettings();
+}
+
+async function deleteTemplate(id) {
+  await callServer('deleteTaskTemplate', id);
+  showToast('Đã xóa mẫu', 'success');
+  renderSettings();
+}
+
+async function runSetup() {
+  showToast('Đang chạy setup...');
+  const result = await callServer('setupSheets');
+  showToast(result, 'success');
+  renderSettings();
+}
+
+// ===== MODAL HELPERS =====
+function showModal(html, isLarge) {
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" id="modal-overlay" onclick="if(event.target.id==='modal-overlay')closeModal()">
+      <div class="modal ${isLarge?'modal-lg':''}">${html}</div>
+    </div>`;
+}
+function closeModal() {
+  document.getElementById('modal-container').innerHTML = '';
+}
+
+// ===== TOAST =====
+function showToast(msg, type='') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ===== LOADING =====
+function showLoading() { document.getElementById('login-screen').innerHTML += '<div class="loading" style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%)"><div class="spinner"></div></div>'; }
+function hideLoading() { const l = document.querySelector('#login-screen .loading'); if(l) l.remove(); }
+
+// ===== SERVER CALLS =====
+function callServer(fn, ...args) {
+  return new Promise((resolve, reject) => {
+    let call = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+    call[fn](...args);
+  });
+}
+
+// ===== UTILS =====
+function v(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+
+function fmtDate(d) {
+  if (!d) return '';
+  const date = new Date(d);
+  if (isNaN(date)) return d;
+  return date.toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+function fmtDateInput(d) {
+  if (!d) return '';
+  const date = new Date(d);
+  if (isNaN(date)) return '';
+  return date.toISOString().split('T')[0];
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+</script>
+</body>
+</html>
