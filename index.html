@@ -179,6 +179,15 @@ textarea{resize:vertical;min-height:80px}
 <div id="toast-wrap"></div>
 
 <script>
+window.onerror = function(msg, src, line, col, err) {
+  toast('JS Error: ' + msg + ' (line ' + line + ')', 'err');
+  console.error(msg, err);
+};
+window.addEventListener('unhandledrejection', function(e) {
+  toast('Async Error: ' + (e.reason && e.reason.message || e.reason), 'err');
+  console.error(e.reason);
+});
+
 var APP = {
   role: null,
   user: null,
