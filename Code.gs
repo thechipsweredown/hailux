@@ -118,6 +118,13 @@ function verifyManagerPassword(password) {
   return entry && String(entry.value) === String(password);
 }
 
+function debugSettings() {
+  const sheet = getSheet('Settings');
+  if (!sheet) return 'Sheet Settings không tồn tại';
+  const data = sheet.getDataRange().getValues();
+  return JSON.stringify(data);
+}
+
 // ============================================================
 // USERS API
 // ============================================================
