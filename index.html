@@ -214,6 +214,14 @@ textarea{resize:vertical;min-height:80px}
 <div id="toast-container"></div>
 
 <script>
+// Catch any JS error and show on screen
+window.onerror = function(msg, src, line, col, err) {
+  var d = document.createElement('div');
+  d.style = 'position:fixed;top:0;left:0;right:0;background:#e94560;color:#fff;padding:12px;font-size:13px;z-index:99999;word-break:break-all';
+  d.textContent = 'JS ERROR: ' + msg + ' (line ' + line + ')';
+  document.body.appendChild(d);
+};
+
 // ===== STATE =====
 const S = {
   role: null,
