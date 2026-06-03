@@ -2,6 +2,13 @@
 // ENTRY POINTS
 // ============================================================
 
+function getJobsDebug() {
+  var sheet = getSheet('Jobs');
+  var lastRow = sheet ? sheet.getLastRow() : -1;
+  var jobs = getJobs();
+  return { sheetExists: !!sheet, lastRow: lastRow, jobsLength: jobs.length, first: jobs[0] || null };
+}
+
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('HaiLux - Quản Lý Công Việc')
