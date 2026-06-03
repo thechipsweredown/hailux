@@ -325,12 +325,6 @@ function renderJobs() {
   google.script.run
     .withSuccessHandler(function(jobs) {
       _jobs = jobs || []; APP.jobs = _jobs;
-      if (_jobs.length === 0) {
-        google.script.run
-          .withSuccessHandler(function(d){ alert('DEBUG: ' + JSON.stringify(d)); })
-          .withFailureHandler(function(e){ alert('DEBUG ERR: ' + e.message); })
-          .getJobsDebug();
-      }
       var jst = APP.stList('job');
       var html = '<div class="page-header"><div><h1>Công việc (Jobs)</h1><p class="sub">Quản lý tất cả job</p></div>';
       html += '<button class="btn btn-blue" onclick="openJobModal(\'\')">+ Thêm Job</button></div>';
@@ -349,17 +343,15 @@ function renderJobs() {
 }
 
 function renderJobsTable() {
-  console.log('[renderJobsTable] _jobs:', _jobs ? _jobs.length : 'NULL', '| _jobStatus:', _jobStatus, '| _jobSearch:', _jobSearch);
-  if (!_jobs) { console.error('_jobs is null/undefined'); return; }
+  if (!_jobs) return;
   var q = (_jobSearch||'').toLowerCase();
   var rows = _jobs.filter(function(j) {
     var ms = !q || (j.code||'').toLowerCase().indexOf(q)>=0 || (j.name||'').toLowerCase().indexOf(q)>=0 || (j.customer_name||'').toLowerCase().indexOf(q)>=0;
     var mst = !_jobStatus || j.status_id === _jobStatus;
     return ms && mst;
   });
-  console.log('[renderJobsTable] rows after filter:', rows.length, '| tbody:', !!document.getElementById('jobs-tbody'));
   var tbody = document.getElementById('jobs-tbody');
-  if (!tbody) { console.error('jobs-tbody NOT FOUND'); return; }
+  if (!tbody) return;
   if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty">Không có job nào</div></td></tr>'; return; }
   var html = '';
   rows.forEach(function(j) {
