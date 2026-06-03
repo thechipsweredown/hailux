@@ -241,8 +241,7 @@ document.addEventListener('click', e => {
 });
 
 // ===== INIT =====
-document.addEventListener('DOMContentLoaded', async () => {
-  // Static button listeners
+function initApp() {
   document.getElementById('tab-btn-manager').addEventListener('click', () => switchLoginTab('manager'));
   document.getElementById('tab-btn-employee').addEventListener('click', () => switchLoginTab('employee'));
   document.getElementById('btn-login-manager').addEventListener('click', loginManager);
@@ -250,15 +249,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-logout').addEventListener('click', logout);
   document.getElementById('manager-password').addEventListener('keydown', e => { if (e.key === 'Enter') loginManager(); });
 
-  try {
-    const d = await callServer('getInitialData');
+  callServer('getInitialData').then(function(d) {
     S.data.users = d.users || [];
     S.data.statuses = d.statuses || [];
     S.data.taskTemplates = d.taskTemplates || [];
     S.data.settings = d.settings || [];
     populateEmployeeSelect();
-  } catch(e) { showToast('Lỗi kết nối server', 'error'); }
-});
+  }).catch(function(e) {
+    console.error('getInitialData failed:', e);
+    showToast('Lỗi kết nối server: ' + (e.message || e), 'error');
+  });
+}
+
+// Apps Script iframe: dùng window.onload thay DOMContentLoaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 function populateEmployeeSelect() {
   const sel = document.getElementById('employee-select');
@@ -1015,10 +1023,18 @@ function showToast(msg, type) {
 }
 
 // ===== SERVER CALLS =====
+// IMPORTANT: preserve `runner` as `this` when calling runner[fn]()
+// Do NOT use .apply(null) — it breaks google.script.run's proxy
 function callServer(fn) {
   const args = Array.prototype.slice.call(arguments, 1);
-  return new Promise((resolve, reject) => {
-    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn].apply(null, args);
+  return new Promise(function(resolve, reject) {
+    var runner = google.script.run
+      .withSuccessHandler(resolve)
+      .withFailureHandler(function(err) {
+        console.error('callServer error [' + fn + ']:', err);
+        reject(err);
+      });
+    runner[fn].apply(runner, args);
   });
 }
 
