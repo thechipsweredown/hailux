@@ -329,7 +329,6 @@ function renderJobs() {
       el.innerHTML = html;
       renderJobsTable();
     })
-    })
     .withFailureHandler(function(e){ el.innerHTML = '<div style="padding:20px;color:red"><strong>Server Error:</strong> '+e.message+'</div>'; })
     .getJobs();
 }
