@@ -183,7 +183,11 @@ var APP = {
   role: null,
   user: null,
   page: null,
-  users: [], statuses: [], taskTemplates: [], settings: [], jobs: []
+  users: [], statuses: [], taskTemplates: [], settings: [], jobs: [],
+  st: function(id) { return (this.statuses||[]).filter(function(s){return s.id===id;})[0] || null; },
+  stBy: function(type, label) { return (this.statuses||[]).filter(function(s){return s.entity_type===type&&s.label===label;})[0] || null; },
+  stList: function(type) { return (this.statuses||[]).filter(function(s){return s.entity_type===type;}); },
+  user_by_id: function(id) { return (this.users||[]).filter(function(u){return u.id===id;})[0] || null; }
 };
 
 // ---- INIT ----
@@ -280,13 +284,13 @@ function renderDashboard() {
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">';
       html += '<div class="card"><div class="card-body"><h3 style="font-size:.95rem;font-weight:700;margin-bottom:14px">Trạng thái Job</h3>';
       Object.keys(s.jobs.by_status).forEach(function(lbl) {
-        var st = APP.statuses.filter(function(x){ return x.entity_type==='job'&&x.label===lbl; })[0];
+        var st = APP.stList('job').filter(function(x){ return x.label===lbl; })[0];
         html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5"><span style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:'+(st?st.color:'#ccc')+';display:inline-block"></span>'+lbl+'</span><strong>'+s.jobs.by_status[lbl]+'</strong></div>';
       });
       html += '</div></div>';
       html += '<div class="card"><div class="card-body"><h3 style="font-size:.95rem;font-weight:700;margin-bottom:14px">Trạng thái Task</h3>';
       Object.keys(s.tasks.by_status).forEach(function(lbl) {
-        var st = APP.statuses.filter(function(x){ return x.entity_type==='task'&&x.label===lbl; })[0];
+        var st = APP.stList('task').filter(function(x){ return x.label===lbl; })[0];
         html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5"><span style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:'+(st?st.color:'#ccc')+';display:inline-block"></span>'+lbl+'</span><strong>'+s.tasks.by_status[lbl]+'</strong></div>';
       });
       html += '</div></div></div>';
@@ -311,7 +315,7 @@ function renderJobs() {
   google.script.run
     .withSuccessHandler(function(jobs) {
       _jobs = jobs; APP.jobs = jobs;
-      var jst = APP.statuses.filter(function(s){ return s.entity_type==='job'; });
+      var jst = APP.stList('job');
       var html = '<div class="page-header"><div><h1>Công việc (Jobs)</h1><p class="sub">Quản lý tất cả job</p></div>';
       html += '<button class="btn btn-blue" onclick="openJobModal(\'\')">+ Thêm Job</button></div>';
       html += '<div class="card"><div class="card-toolbar">';
@@ -340,7 +344,7 @@ function renderJobsTable() {
   if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty">Không có job nào</div></td></tr>'; return; }
   var html = '';
   rows.forEach(function(j) {
-    var st = APP.statuses.filter(function(s){ return s.id===j.status_id; })[0];
+    var st = APP.st(j.status_id);
     var over = j.deadline && new Date(j.deadline) < new Date() && st && st.label !== 'Hoàn thành';
     html += '<tr>';
     html += '<td><strong>'+esc(j.code||'—')+'</strong></td>';
@@ -360,7 +364,7 @@ function renderJobsTable() {
 
 function openJobModal(jobId) {
   var job = jobId ? _jobs.filter(function(j){ return j.id===jobId; })[0] : null;
-  var jst = APP.statuses.filter(function(s){ return s.entity_type==='job'; });
+  var jst = APP.stList('job');
   var html = '<div class="modal-hd"><h3>'+(job?'Sửa Job':'Thêm Job mới')+'</h3><button class="btn-x" onclick="closeModal()">✕</button></div>';
   html += '<div class="modal-bd">';
   html += '<div class="row2"><div class="fg"><label>Mã SP *</label><input id="f-code" value="'+esc(job&&job.code||'')+'" placeholder="KL001"></div>';
@@ -409,8 +413,8 @@ function openJobDetail(jobId) {
   showModal(spinner());
   google.script.run
     .withSuccessHandler(function(job) {
-      var jst = APP.statuses.filter(function(s){ return s.entity_type==='job'; });
-      var tst = APP.statuses.filter(function(s){ return s.entity_type==='task'; });
+      var jst = APP.stList('job');
+      var tst = APP.stList('task');
       var over = job.deadline && new Date(job.deadline)<new Date() && job.status && job.status.label!=='Hoàn thành';
       var html = '<div class="modal-hd"><h3>'+esc(job.code)+' — '+esc(job.name)+'</h3><button class="btn-x" onclick="closeModal()">✕</button></div>';
       html += '<div class="modal-bd">';
@@ -475,7 +479,7 @@ function renderTasksHtml(tasks, tst, job) {
 
 // ---- TASKS ----
 function openAddTask(jobId) {
-  var tst = APP.statuses.filter(function(s){ return s.entity_type==='task'; });
+  var tst = APP.stList('task');
   var emps = APP.users.filter(function(u){ return u.role==='employee'; });
   var html = '<div class="modal-hd"><h3>+ Thêm Task</h3><button class="btn-x" onclick="closeModal();openJobDetail(\''+jobId+'\')">✕</button></div>';
   html += '<div class="modal-bd">';
@@ -498,7 +502,7 @@ function openEditTask(taskId, jobId) {
   google.script.run
     .withSuccessHandler(function(t) {
       if (!t) return;
-      var tst = APP.statuses.filter(function(s){ return s.entity_type==='task'; });
+      var tst = APP.stList('task');
       var emps = APP.users.filter(function(u){ return u.role==='employee'; });
       var html = '<div class="modal-hd"><h3>Sửa Task</h3><button class="btn-x" onclick="closeModal();openJobDetail(\''+jobId+'\')">✕</button></div>';
       html += '<div class="modal-bd">';
@@ -615,7 +619,7 @@ function renderMyTasks() {
   el.innerHTML = spinner();
   google.script.run
     .withSuccessHandler(function(tasks) {
-      var tst = APP.statuses.filter(function(s){ return s.entity_type==='task'; });
+      var tst = APP.stList('task');
       var groups = { in_progress:{lbl:'Đang làm',dot:'#FF9800',items:[]}, upcoming:{lbl:'Sắp đến lượt',dot:'#4361ee',items:[]}, ready:{lbl:'Có thể làm',dot:'#4CAF50',items:[]}, blocked:{lbl:'Chưa đến lượt',dot:'#ccc',items:[]}, done:{lbl:'Đã hoàn thành',dot:'#4CAF50',items:[]} };
       tasks.forEach(function(t){ if(groups[t.availability]) groups[t.availability].items.push(t); });
       var html = '<div class="page-header"><div><h1>Việc của '+esc(APP.user.name)+'</h1><p class="sub">Tổng: '+tasks.length+' task</p></div>';
@@ -648,7 +652,7 @@ function openEmpTask(taskId) {
   google.script.run
     .withSuccessHandler(function(data) {
       var t = data.task, imgs = data.images;
-      var tst = APP.statuses.filter(function(s){ return s.entity_type==='task'; });
+      var tst = APP.stList('task');
       var st = tst.filter(function(s){ return s.id===t.status_id; })[0];
       var doneS = tst.filter(function(s){ return s.label==='Hoàn thành'; })[0];
       var ipS = tst.filter(function(s){ return s.label==='Đang làm'; })[0];
@@ -697,8 +701,8 @@ function renderSettings() {
     .withSuccessHandler(function(d) {
       APP.users = d.users||[]; APP.statuses = d.statuses||[]; APP.taskTemplates = d.taskTemplates||[];
       var emps = APP.users.filter(function(u){ return u.role==='employee'; });
-      var jst = APP.statuses.filter(function(s){ return s.entity_type==='job'; });
-      var tst = APP.statuses.filter(function(s){ return s.entity_type==='task'; });
+      var jst = APP.stList('job');
+      var tst = APP.stList('task');
       var html = '<div class="page-header"><div><h1>Cài đặt</h1></div></div>';
       html += '<div class="set-sec"><h3>Bảo mật</h3><div style="display:flex;gap:8px"><input id="new-pw" type="password" placeholder="Mật khẩu mới..." style="max-width:240px"><button class="btn btn-blue" onclick="changePw()">Đổi mật khẩu</button></div></div>';
       html += '<div class="set-sec"><h3>Nhân viên ('+emps.length+')</h3>';
