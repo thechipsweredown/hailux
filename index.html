@@ -212,15 +212,23 @@ textarea{resize:vertical;min-height:80px}
 
 <div id="modal-container"></div>
 <div id="toast-container"></div>
+<div id="_debug" style="position:fixed;bottom:0;left:0;right:0;background:#000;color:#0f0;font-size:11px;padding:4px 8px;z-index:99999;word-break:break-all;min-height:18px"></div>
 
 <script>
-// Catch any JS error and show on screen
-window.onerror = function(msg, src, line, col, err) {
-  var d = document.createElement('div');
-  d.style = 'position:fixed;top:0;left:0;right:0;background:#e94560;color:#fff;padding:12px;font-size:13px;z-index:99999;word-break:break-all';
-  d.textContent = 'JS ERROR: ' + msg + ' (line ' + line + ')';
-  document.body.appendChild(d);
+// Debug log hiển thị trên màn hình
+var _dbg = [];
+function dbg(msg) {
+  _dbg.push(msg);
+  var el = document.getElementById('_debug');
+  if (el) el.textContent = _dbg.join(' | ');
+}
+
+window.onerror = function(msg, src, line) {
+  dbg('ERR line ' + line + ': ' + msg);
 };
+window.addEventListener('unhandledrejection', function(e) {
+  dbg('PROMISE ERR: ' + (e.reason && e.reason.message || e.reason));
+});
 
 // ===== STATE =====
 const S = {
@@ -250,14 +258,24 @@ document.addEventListener('click', e => {
 
 // ===== INIT =====
 function initApp() {
-  document.getElementById('tab-btn-manager').addEventListener('click', () => switchLoginTab('manager'));
-  document.getElementById('tab-btn-employee').addEventListener('click', () => switchLoginTab('employee'));
-  document.getElementById('btn-login-manager').addEventListener('click', loginManager);
-  document.getElementById('btn-login-employee').addEventListener('click', loginEmployee);
-  document.getElementById('btn-logout').addEventListener('click', logout);
-  document.getElementById('manager-password').addEventListener('keydown', e => { if (e.key === 'Enter') loginManager(); });
+  dbg('initApp start');
+  var tabM = document.getElementById('tab-btn-manager');
+  var tabE = document.getElementById('tab-btn-employee');
+  dbg('els:' + !!tabM + '/' + !!tabE);
+  if (tabM) tabM.addEventListener('click', function() { switchLoginTab('manager'); });
+  if (tabE) tabE.addEventListener('click', function() { switchLoginTab('employee'); });
+  var btnM = document.getElementById('btn-login-manager');
+  var btnE = document.getElementById('btn-login-employee');
+  var btnOut = document.getElementById('btn-logout');
+  var pw = document.getElementById('manager-password');
+  if (btnM) btnM.addEventListener('click', loginManager);
+  if (btnE) btnE.addEventListener('click', loginEmployee);
+  if (btnOut) btnOut.addEventListener('click', logout);
+  if (pw) pw.addEventListener('keydown', function(e) { if (e.key === 'Enter') loginManager(); });
+  dbg('listeners ok');
 
   callServer('getInitialData').then(function(d) {
+    dbg('getInitialData ok');
     S.data.users = d.users || [];
     S.data.statuses = d.statuses || [];
     S.data.taskTemplates = d.taskTemplates || [];
@@ -269,10 +287,12 @@ function initApp() {
   });
 }
 
-// Apps Script iframe: dùng window.onload thay DOMContentLoaded
+dbg('script parsed');
 if (document.readyState === 'loading') {
+  dbg('waiting DOMContentLoaded');
   document.addEventListener('DOMContentLoaded', initApp);
 } else {
+  dbg('readyState=' + document.readyState);
   initApp();
 }
 
