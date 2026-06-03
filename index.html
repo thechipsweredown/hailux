@@ -36,7 +36,9 @@ nav{flex:1;padding:12px 0}
 .login-tab.active{background:#e94560;color:#fff;font-weight:600}
 .form-group{margin-bottom:16px}
 .form-group label{display:block;font-size:.85rem;font-weight:600;color:#555;margin-bottom:6px}
-.btn-primary{background:#e94560;color:#fff;padding:12px;border-radius:8px;font-size:1rem;font-weight:600;width:100%;margin-top:8px}
+.btn-primary{background:#e94560;color:#fff;padding:12px;border-radius:8px;font-size:1rem;font-weight:600;width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;transition:.2s}
+.btn-primary:disabled{opacity:.7;cursor:not-allowed}
+.btn-spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
 .login-error{color:#e94560;font-size:.85rem;margin-top:8px;text-align:center}
 .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
 .page-header h1{font-size:1.5rem;font-weight:700;color:#1a1a2e}
@@ -149,7 +151,7 @@ textarea{resize:vertical;min-height:80px}
     </div>
     <div id="form-manager">
       <div class="form-group"><label>Mật khẩu</label><input type="password" id="inp-pw" onkeydown="if(event.key==='Enter')doLogin()"></div>
-      <button class="btn-primary" onclick="doLogin()">Đăng nhập</button>
+      <button class="btn-primary" id="btn-login" onclick="doLogin()">Đăng nhập</button>
       <p class="login-error hidden" id="err-pw">Mật khẩu không đúng</p>
     </div>
     <div id="form-emp" class="hidden">
@@ -163,7 +165,7 @@ textarea{resize:vertical;min-height:80px}
 <div id="app" class="hidden">
   <div id="sidebar">
     <div class="sidebar-logo"><h2>HaiLux</h2><p>Quản lý công việc</p></div>
-    <div class="sidebar-user"><span class="muted">Đăng nhập với</span><strong id="sb-name">—</strong></div>
+    <div class="sidebar-user" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span class="muted" style="font-size:.75rem">Xin chào, </span><strong id="sb-name" style="font-size:.85rem">—</strong></div>
     <nav id="sb-nav"></nav>
     <div class="sidebar-footer"><button class="btn-logout" onclick="doLogout()">&#8592; Đăng xuất</button></div>
   </div>
@@ -226,14 +228,26 @@ function switchTab(tab) {
   document.getElementById('form-emp').classList.toggle('hidden', tab !== 'employee');
 }
 
+function setLoginLoading(loading) {
+  var btn = document.getElementById('btn-login');
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.innerHTML = loading
+    ? '<div class="btn-spin"></div> Đang kiểm tra...'
+    : 'Đăng nhập';
+}
+
 function doLogin() {
   var pw = document.getElementById('inp-pw').value;
+  setLoginLoading(true);
+  document.getElementById('err-pw').classList.add('hidden');
   google.script.run
     .withSuccessHandler(function(ok) {
+      setLoginLoading(false);
       if (ok) { APP.role = 'manager'; APP.user = {name:'Quản lý', role:'manager'}; enterApp(); }
       else { document.getElementById('err-pw').classList.remove('hidden'); }
     })
-    .withFailureHandler(function(e){ toast(e.message,'err'); })
+    .withFailureHandler(function(e){ setLoginLoading(false); toast(e.message,'err'); })
     .verifyManagerPassword(pw);
 }
 
