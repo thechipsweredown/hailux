@@ -83,11 +83,13 @@ function genId() {
 }
 
 function getSheet(name) {
-  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('Không tìm thấy Spreadsheet. Script cần được gắn vào Google Sheet.');
+  return ss.getSheetByName(name);
 }
 
 function sheetToObjects(sheet) {
-  if (sheet.getLastRow() <= 1) return [];
+  if (!sheet || sheet.getLastRow() <= 1) return [];
   const [headers, ...rows] = sheet.getDataRange().getValues();
   return rows.map(row => {
     const obj = {};

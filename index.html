@@ -187,7 +187,8 @@ var APP = {
   st: function(id) { return (this.statuses||[]).filter(function(s){return s.id===id;})[0] || null; },
   stBy: function(type, label) { return (this.statuses||[]).filter(function(s){return s.entity_type===type&&s.label===label;})[0] || null; },
   stList: function(type) { return (this.statuses||[]).filter(function(s){return s.entity_type===type;}); },
-  user_by_id: function(id) { return (this.users||[]).filter(function(u){return u.id===id;})[0] || null; }
+  user_by_id: function(id) { return (this.users||[]).filter(function(u){return u.id===id;})[0] || null; },
+  emps: function() { return (this.users||[]).filter(function(u){return u.role==='employee';}); }
 };
 
 // ---- INIT ----
@@ -199,7 +200,7 @@ window.onload = function() {
       APP.taskTemplates = d.taskTemplates || [];
       APP.settings = d.settings || [];
       var sel = document.getElementById('sel-emp');
-      APP.users.filter(function(u){ return u.role === 'employee'; }).forEach(function(u) {
+      APP.emps().forEach(function(u) {
         var o = document.createElement('option');
         o.value = u.id; o.textContent = u.name; sel.appendChild(o);
       });
@@ -231,7 +232,7 @@ function doLoginEmp() {
   var id = document.getElementById('sel-emp').value;
   if (!id) { document.getElementById('err-emp').classList.remove('hidden'); return; }
   APP.role = 'employee';
-  APP.user = APP.users.filter(function(u){ return u.id === id; })[0];
+  APP.user = APP.user_by_id(id);
   enterApp();
 }
 
@@ -460,7 +461,7 @@ function renderTasksHtml(tasks, tst, job) {
   var html = '';
   tasks.forEach(function(t, i) {
     var st = tst.filter(function(s){ return s.id===t.status_id; })[0];
-    var asgn = APP.users.filter(function(u){ return u.id===t.assignee_id; })[0];
+    var asgn = APP.user_by_id(t.assignee_id);
     var dl = t.deadline || (job&&job.deadline);
     var over = dl && new Date(dl)<new Date() && st && st.label!=='Hoàn thành';
     html += '<div class="task-item">';
@@ -480,7 +481,7 @@ function renderTasksHtml(tasks, tst, job) {
 // ---- TASKS ----
 function openAddTask(jobId) {
   var tst = APP.stList('task');
-  var emps = APP.users.filter(function(u){ return u.role==='employee'; });
+  var emps = APP.emps();
   var html = '<div class="modal-hd"><h3>+ Thêm Task</h3><button class="btn-x" onclick="closeModal();openJobDetail(\''+jobId+'\')">✕</button></div>';
   html += '<div class="modal-bd">';
   html += '<div class="row2 row1"><div class="fg"><label>Tên task *</label><input id="t-name" list="tmpl-dl" placeholder="Chọn hoặc nhập"><datalist id="tmpl-dl">';
@@ -503,7 +504,7 @@ function openEditTask(taskId, jobId) {
     .withSuccessHandler(function(t) {
       if (!t) return;
       var tst = APP.stList('task');
-      var emps = APP.users.filter(function(u){ return u.role==='employee'; });
+      var emps = APP.emps();
       var html = '<div class="modal-hd"><h3>Sửa Task</h3><button class="btn-x" onclick="closeModal();openJobDetail(\''+jobId+'\')">✕</button></div>';
       html += '<div class="modal-bd">';
       html += '<div class="row2 row1"><div class="fg"><label>Tên task *</label><input id="t-name" value="'+esc(t.name||'')+'" list="tmpl-dl"><datalist id="tmpl-dl">';
@@ -700,7 +701,7 @@ function renderSettings() {
   google.script.run
     .withSuccessHandler(function(d) {
       APP.users = d.users||[]; APP.statuses = d.statuses||[]; APP.taskTemplates = d.taskTemplates||[];
-      var emps = APP.users.filter(function(u){ return u.role==='employee'; });
+      var emps = APP.emps();
       var jst = APP.stList('job');
       var tst = APP.stList('task');
       var html = '<div class="page-header"><div><h1>Cài đặt</h1></div></div>';
