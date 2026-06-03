@@ -173,6 +173,7 @@ textarea{resize:vertical;min-height:80px}
       </div>
       <button class="btn-primary" id="btn-login-manager">Đăng nhập</button>
       <p class="login-error hidden" id="manager-error">Mật khẩu không đúng</p>
+      <p id="_debug" style="font-size:10px;color:#aaa;margin-top:8px;word-break:break-all"></p>
     </div>
     <div id="tab-employee" class="hidden">
       <div class="form-group">
@@ -212,7 +213,6 @@ textarea{resize:vertical;min-height:80px}
 
 <div id="modal-container"></div>
 <div id="toast-container"></div>
-<div id="_debug" style="position:fixed;bottom:0;left:0;right:0;background:#000;color:#0f0;font-size:11px;padding:4px 8px;z-index:99999;word-break:break-all;min-height:18px"></div>
 
 <script>
 // Debug log hiển thị trên màn hình
@@ -287,12 +287,12 @@ function initApp() {
   });
 }
 
-dbg('script parsed');
+dbg('script ok');
+dbg('gs=' + (typeof google !== 'undefined' && typeof google.script !== 'undefined' ? 'YES' : 'NO'));
+
 if (document.readyState === 'loading') {
-  dbg('waiting DOMContentLoaded');
   document.addEventListener('DOMContentLoaded', initApp);
 } else {
-  dbg('readyState=' + document.readyState);
   initApp();
 }
 
