@@ -616,6 +616,12 @@ function getJobWithDetails(jobId) {
   return { ...job, status: jobStatus, tasks: enrichedTasks, images };
 }
 
+function getTaskWithImages(taskId) {
+  var task = getTaskById(taskId);
+  var images = getImages('task', taskId);
+  return { task: task, images: images };
+}
+
 function getInitialData() {
   return {
     users: getUsers(),
