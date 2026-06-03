@@ -120,11 +120,19 @@ function verifyManagerPassword(password) {
   return entry && String(entry.value) === String(password);
 }
 
-function debugSettings() {
-  const sheet = getSheet('Settings');
-  if (!sheet) return 'Sheet Settings không tồn tại';
-  const data = sheet.getDataRange().getValues();
-  return JSON.stringify(data);
+function debugAll() {
+  var results = {};
+  var sheets = ['Users','Jobs','Tasks','Statuses','TaskTemplates','Settings','Images'];
+  sheets.forEach(function(name) {
+    try {
+      var sheet = getSheet(name);
+      if (!sheet) { results[name] = 'MISSING'; return; }
+      results[name] = sheet.getLastRow() + ' rows';
+    } catch(e) { results[name] = 'ERROR: ' + e.message; }
+  });
+  try { results['_getInitialData'] = JSON.stringify(getInitialData()).substring(0, 200); } catch(e) { results['_getInitialData'] = 'ERROR: ' + e.message; }
+  try { results['_getDashboardStats'] = 'OK: ' + JSON.stringify(getDashboardStats()).substring(0,100); } catch(e) { results['_getDashboardStats'] = 'ERROR: ' + e.message; }
+  return JSON.stringify(results, null, 2);
 }
 
 // ============================================================
