@@ -325,6 +325,7 @@ function renderJobs() {
   google.script.run
     .withSuccessHandler(function(jobs) {
       _jobs = jobs || []; APP.jobs = _jobs;
+      toast('Jobs: ' + _jobs.length + ' | statuses: ' + APP.statuses.length);
       var jst = APP.stList('job');
       var html = '<div class="page-header"><div><h1>Công việc (Jobs)</h1><p class="sub">Quản lý tất cả job</p></div>';
       html += '<button class="btn btn-blue" onclick="openJobModal(\'\')">+ Thêm Job</button></div>';
