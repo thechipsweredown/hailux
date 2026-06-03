@@ -315,7 +315,6 @@ function renderJobs() {
   el.innerHTML = spinner();
   google.script.run
     .withSuccessHandler(function(jobs) {
-      try {
       _jobs = jobs || []; APP.jobs = _jobs;
       var jst = APP.stList('job');
       var html = '<div class="page-header"><div><h1>Công việc (Jobs)</h1><p class="sub">Quản lý tất cả job</p></div>';
@@ -330,7 +329,6 @@ function renderJobs() {
       el.innerHTML = html;
       renderJobsTable();
     })
-      } catch(err) { el.innerHTML = '<div style="padding:20px;color:red;font-size:13px"><strong>JS Error in renderJobs:</strong><br>'+err.message+'<br><pre>'+err.stack+'</pre></div>'; }
     })
     .withFailureHandler(function(e){ el.innerHTML = '<div style="padding:20px;color:red"><strong>Server Error:</strong> '+e.message+'</div>'; })
     .getJobs();
