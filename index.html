@@ -315,7 +315,8 @@ function renderJobs() {
   el.innerHTML = spinner();
   google.script.run
     .withSuccessHandler(function(jobs) {
-      _jobs = jobs; APP.jobs = jobs;
+      try {
+      _jobs = jobs || []; APP.jobs = _jobs;
       var jst = APP.stList('job');
       var html = '<div class="page-header"><div><h1>Công việc (Jobs)</h1><p class="sub">Quản lý tất cả job</p></div>';
       html += '<button class="btn btn-blue" onclick="openJobModal(\'\')">+ Thêm Job</button></div>';
@@ -329,12 +330,15 @@ function renderJobs() {
       el.innerHTML = html;
       renderJobsTable();
     })
-    .withFailureHandler(function(e){ el.innerHTML = '<p class="empty">Lỗi: '+e.message+'</p>'; })
+      } catch(err) { el.innerHTML = '<div style="padding:20px;color:red;font-size:13px"><strong>JS Error in renderJobs:</strong><br>'+err.message+'<br><pre>'+err.stack+'</pre></div>'; }
+    })
+    .withFailureHandler(function(e){ el.innerHTML = '<div style="padding:20px;color:red"><strong>Server Error:</strong> '+e.message+'</div>'; })
     .getJobs();
 }
 
 function renderJobsTable() {
-  var q = _jobSearch.toLowerCase();
+  if (!_jobs) { console.error('_jobs is null/undefined'); return; }
+  var q = (_jobSearch||'').toLowerCase();
   var rows = _jobs.filter(function(j) {
     var ms = !q || (j.code||'').toLowerCase().indexOf(q)>=0 || (j.name||'').toLowerCase().indexOf(q)>=0 || (j.customer_name||'').toLowerCase().indexOf(q)>=0;
     var mst = !_jobStatus || j.status_id === _jobStatus;
