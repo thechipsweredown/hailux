@@ -349,6 +349,7 @@ function renderJobs() {
 }
 
 function renderJobsTable() {
+  console.log('[renderJobsTable] _jobs:', _jobs ? _jobs.length : 'NULL', '| _jobStatus:', _jobStatus, '| _jobSearch:', _jobSearch);
   if (!_jobs) { console.error('_jobs is null/undefined'); return; }
   var q = (_jobSearch||'').toLowerCase();
   var rows = _jobs.filter(function(j) {
@@ -356,8 +357,9 @@ function renderJobsTable() {
     var mst = !_jobStatus || j.status_id === _jobStatus;
     return ms && mst;
   });
+  console.log('[renderJobsTable] rows after filter:', rows.length, '| tbody:', !!document.getElementById('jobs-tbody'));
   var tbody = document.getElementById('jobs-tbody');
-  if (!tbody) return;
+  if (!tbody) { console.error('jobs-tbody NOT FOUND'); return; }
   if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty">Không có job nào</div></td></tr>'; return; }
   var html = '';
   rows.forEach(function(j) {
