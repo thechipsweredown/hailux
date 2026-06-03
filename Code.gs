@@ -100,7 +100,11 @@ function sheetToObjects(sheet) {
   const [headers, ...rows] = sheet.getDataRange().getValues();
   return rows.map(row => {
     const obj = {};
-    headers.forEach((h, i) => obj[h] = row[i]);
+    headers.forEach((h, i) => {
+      var val = row[i];
+      if (val instanceof Date) val = val.toISOString();
+      obj[h] = val;
+    });
     return obj;
   });
 }
