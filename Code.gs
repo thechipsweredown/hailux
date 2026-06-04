@@ -411,13 +411,13 @@ function autoUpdateJobStatus(jobId) {
 
   const statuses = getStatuses();
   const taskStatuses = statuses.filter(s => s.entity_type === 'task');
-  const doneStatus = taskStatuses.find(s => s.label === 'Hoàn thành');
-  const inProgressStatus = taskStatuses.find(s => s.label === 'Đang làm');
+  const doneStatus       = findStatusByNorm(taskStatuses, 'hoànthanh') || findStatusByNorm(taskStatuses, 'đãxong');
+  const inProgressStatus = findStatusByNorm(taskStatuses, 'đanglàm');
 
-  const jobStatuses = statuses.filter(s => s.entity_type === 'job');
-  const jobDone = jobStatuses.find(s => s.label === 'Hoàn thành');
-  const jobInProgress = jobStatuses.find(s => s.label === 'Đang làm');
-  const jobNotStarted = jobStatuses.find(s => s.label === 'Chưa làm');
+  const jobStatuses   = statuses.filter(s => s.entity_type === 'job');
+  const jobDone       = findStatusByNorm(jobStatuses, 'hoànthanh');
+  const jobInProgress = findStatusByNorm(jobStatuses, 'đanglàm');
+  const jobNotStarted = findStatusByNorm(jobStatuses, 'chưalàm');
 
   const allDone = tasks.every(t => doneStatus && t.status_id === doneStatus.id);
   const anyInProgress = tasks.some(t => inProgressStatus && t.status_id === inProgressStatus.id);
@@ -435,53 +435,66 @@ function autoUpdateJobStatus(jobId) {
 // TASK AVAILABILITY (sequential logic)
 // ============================================================
 
+// So sánh label không phân biệt hoa thường
+function normLabel(s) {
+  return (s || '').toLowerCase().replace(/\s/g, '');
+}
+
+function findStatusByNorm(statuses, norm) {
+  return statuses.find(s => normLabel(s.label) === norm) || null;
+}
+
 function getEnrichedTasksForAssignee(assigneeId) {
   const allTasks = getTasks();
   const statuses = getStatuses();
-  const users = getUsers();
   const jobs = getJobs();
-  const jobStatuses = statuses.filter(s => s.entity_type === 'job');
   const taskStatuses = statuses.filter(s => s.entity_type === 'task');
-  const doneStatus = taskStatuses.find(s => s.label === 'Hoàn thành');
 
-  // group tasks by job
+  // Tìm status linh hoạt theo label
+  const doneStatus = findStatusByNorm(taskStatuses, 'hoànthanh')
+                  || findStatusByNorm(taskStatuses, 'đãxong');
+  const ipStatus   = findStatusByNorm(taskStatuses, 'đanglàm');
+
+  // Group + sort tasks theo job
   const tasksByJob = {};
   allTasks.forEach(t => {
     if (!tasksByJob[t.job_id]) tasksByJob[t.job_id] = [];
     tasksByJob[t.job_id].push(t);
   });
-  Object.values(tasksByJob).forEach(arr => arr.sort((a, b) => Number(a.order) - Number(b.order)));
+  Object.values(tasksByJob).forEach(arr =>
+    arr.sort((a, b) => Number(a.order) - Number(b.order))
+  );
 
   const myTasks = allTasks.filter(t => t.assignee_id === assigneeId);
 
   return myTasks.map(task => {
-    const jobTasks = (tasksByJob[task.job_id] || []);
-    const myOrder = Number(task.order);
-    const prevTask = jobTasks.find(t => Number(t.order) === myOrder - 1);
-    const prevDone = !prevTask || (doneStatus && prevTask.status_id === doneStatus.id);
-    const prevPrevTask = jobTasks.find(t => Number(t.order) === myOrder - 2);
-    const prevPrevDone = !prevPrevTask || (doneStatus && prevPrevTask.status_id === doneStatus.id);
+    const jobTasks = tasksByJob[task.job_id] || [];
+    const myOrder  = Number(task.order);
 
-    const job = jobs.find(j => j.id === task.job_id);
-    const status = taskStatuses.find(s => s.id === task.status_id);
+    const prevTask     = jobTasks.find(t => Number(t.order) === myOrder - 1) || null;
+    const prevPrevTask = jobTasks.find(t => Number(t.order) === myOrder - 2) || null;
+
+    const isDone       = doneStatus && task.status_id === doneStatus.id;
+    const isIP         = ipStatus   && task.status_id === ipStatus.id;
+    const prevIsDone   = !prevTask  || (doneStatus && prevTask.status_id === doneStatus.id);
+    const ppIsDone     = prevPrevTask && doneStatus && prevPrevTask.status_id === doneStatus.id;
+
+    // Logic:
+    // done        = task này đã xong
+    // in_progress = task này đang làm
+    // ready       = task trước đã xong (hoặc là task đầu tiên) → có thể bắt đầu
+    // upcoming    = task trước CHƯA xong, nhưng task trước-trước ĐÃ xong → sắp đến lượt
+    // blocked     = task trước-trước chưa xong → chưa đến lượt
+    let availability;
+    if (isDone)        availability = 'done';
+    else if (isIP)     availability = 'in_progress';
+    else if (prevIsDone) availability = 'ready';
+    else if (ppIsDone)   availability = 'upcoming';
+    else                 availability = 'blocked';
+
+    const job = jobs.find(j => j.id === task.job_id) || null;
+    const status = taskStatuses.find(s => s.id === task.status_id) || null;
     const effectiveDeadline = task.deadline || (job ? job.deadline : '');
-
-    let availability = 'blocked'; // chưa đến lượt
-    if (doneStatus && task.status_id === doneStatus.id) {
-      availability = 'done';
-    } else if (prevDone) {
-      // task trước done → available
-      availability = prevPrevDone ? 'ready' : 'ready'; // có thể làm
-      // "sắp phải làm" = prevTask tồn tại và prevPrevDone (task trước task của mình vừa done)
-      if (prevTask && doneStatus && prevTask.status_id === doneStatus.id) {
-        availability = 'upcoming'; // sắp phải làm
-      }
-      if (!prevTask) availability = 'ready'; // task đầu tiên luôn available
-    }
-
-    // override: nếu đang làm thì là 'in_progress'
-    const inProgressStatus = taskStatuses.find(s => s.label === 'Đang làm');
-    if (inProgressStatus && task.status_id === inProgressStatus.id) availability = 'in_progress';
 
     return {
       ...task,
@@ -489,7 +502,7 @@ function getEnrichedTasksForAssignee(assigneeId) {
       status,
       effective_deadline: effectiveDeadline,
       availability,
-      prev_task: prevTask || null,
+      prev_task: prevTask,
     };
   });
 }
