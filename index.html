@@ -367,7 +367,7 @@ function renderJobs() {
       html += '<option value="">Tất cả trạng thái</option>';
       jst.forEach(function(s){ html += '<option value="'+s.id+'"'+(s.id===_jobStatus?' selected':'')+'>'+s.label+'</option>'; });
       html += '</select></div>';
-      html += '<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tên SP</th><th>Khách hàng</th><th>Deadline</th><th>Doanh thu</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="jobs-tbody"></tbody></table></div></div>';
+      html += '<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tên SP</th><th>Khách hàng</th><th>Ngày nhận</th><th>Deadline</th><th>Doanh thu</th><th>Trạng thái</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div></div>';
       el.innerHTML = html;
       renderJobsTable();
     })
@@ -385,22 +385,30 @@ function renderJobsTable() {
   });
   var tbody = document.getElementById('jobs-tbody');
   if (!tbody) return;
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty">Không có job nào</div></td></tr>'; return; }
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty">Không có job nào</div></td></tr>'; return; }
   var html = '';
   rows.forEach(function(j) {
-    var st = APP.st(j.status_id);
-    var over = j.deadline && new Date(j.deadline) < new Date() && st && st.label !== 'Hoàn thành';
+    var st   = APP.st(j.status_id);
+    var norm = (st ? st.label : '').toLowerCase().replace(/\s/g,'');
+    var over = j.deadline && new Date(j.deadline) < new Date() && norm !== 'hoànthanh' && norm !== 'hủy';
+    var daysLeft = j.deadline ? Math.ceil((new Date(j.deadline)-new Date())/86400000) : null;
     html += '<tr>';
-    html += '<td><strong>'+esc(j.code||'—')+'</strong></td>';
-    html += '<td>'+esc(j.name||'—')+'</td>';
-    html += '<td>'+esc(j.customer_name||'—')+'</td>';
-    html += '<td>'+(j.deadline ? '<span class="'+(over?'badge badge-red':'')+'">'+fmtDate(j.deadline)+'</span>' : '—')+'</td>';
-    html += '<td><span class="money">'+(j.revenue ? Number(j.revenue).toLocaleString('vi-VN')+'đ' : '—')+'</span></td>';
-    html += '<td>'+(st ? '<span class="badge" style="background:'+st.color+'22;color:'+st.color+'">'+st.label+'</span>' : '—')+'</td>';
+    html += '<td><span style="font-weight:700;color:#1a1a2e;font-size:.88rem">'+esc(j.code||'—')+'</span></td>';
+    html += '<td><div style="font-weight:500">'+esc(j.name||'—')+'</div>'+(j.customer_name?'<div style="font-size:.78rem;color:#aaa;margin-top:2px">'+esc(j.customer_name)+'</div>':'')+'</td>';
+    html += '<td style="font-size:.85rem">'+(j.customer_contact?'<div style="color:#555">'+esc(j.customer_contact)+'</div>':'<span style="color:#ccc">—</span>')+'</td>';
+    html += '<td style="font-size:.83rem;color:#888">'+(j.received_date?fmtDate(j.received_date):'—')+'</td>';
+    html += '<td>'+(j.deadline
+      ? '<div style="font-size:.85rem;font-weight:'+(over?'700':'500')+';color:'+(over?'#e94560':'#333')+'">'
+        +fmtDate(j.deadline)+'</div>'
+        +(daysLeft!==null && !over && daysLeft<=7 ? '<div style="font-size:.75rem;color:#FF9800">còn '+daysLeft+' ngày</div>'
+        : over ? '<div style="font-size:.75rem;color:#e94560">quá '+Math.abs(daysLeft)+' ngày</div>' : '')
+      : '<span style="color:#ccc">—</span>')+'</td>';
+    html += '<td><span style="font-family:monospace;font-weight:600;font-size:.88rem">'+(j.revenue?Number(j.revenue).toLocaleString('vi-VN')+'đ':'<span style="color:#ccc">—</span>')+'</span></td>';
+    html += '<td>'+(st?'<span class="badge" style="background:'+st.color+'22;color:'+st.color+';border:1px solid '+st.color+'44">'+st.label+'</span>':'<span style="color:#ccc">—</span>')+'</td>';
     html += '<td style="white-space:nowrap">';
-    html += '<button class="btn btn-sm btn-outline" onclick="openJobDetail(\''+j.id+'\')">Chi tiết</button> ';
-    html += '<button class="btn btn-sm btn-outline" onclick="openJobModal(\''+j.id+'\')">Sửa</button> ';
-    html += '<button class="btn btn-sm btn-ghost" onclick="delJob(\''+j.id+'\')">Xóa</button>';
+    html += '<button class="btn btn-sm" style="background:#f0f4ff;color:#4361ee;border:1px solid #d0d9ff" onclick="openJobDetail(\''+j.id+'\')">Chi tiết</button> ';
+    html += '<button class="btn btn-sm btn-ghost" onclick="openJobModal(\''+j.id+'\')">✏️</button> ';
+    html += '<button class="btn btn-sm btn-ghost" style="color:#e94560" onclick="delJob(\''+j.id+'\')">🗑</button>';
     html += '</td></tr>';
   });
   tbody.innerHTML = html;
