@@ -698,7 +698,13 @@ function renderMyTasks() {
   google.script.run
     .withSuccessHandler(function(tasks) {
       var tst = APP.stList('task');
-      var groups = { in_progress:{lbl:'Đang làm',dot:'#FF9800',items:[]}, upcoming:{lbl:'Sắp đến lượt',dot:'#4361ee',items:[]}, ready:{lbl:'Có thể làm',dot:'#4CAF50',items:[]}, blocked:{lbl:'Chưa đến lượt',dot:'#ccc',items:[]}, done:{lbl:'Đã hoàn thành',dot:'#4CAF50',items:[]} };
+      var groups = {
+        in_progress: {lbl:'🔥 Đang làm',       dot:'#FF9800', items:[]},
+        upcoming:    {lbl:'⏰ Sắp đến lượt',    dot:'#4361ee', items:[]},
+        ready:       {lbl:'✅ Có thể làm',       dot:'#4CAF50', items:[]},
+        done:        {lbl:'☑️ Đã hoàn thành',   dot:'#9E9E9E', items:[]},
+        blocked:     {lbl:'⏸ Chưa đến lượt',   dot:'#ddd',    items:[]},
+      };
       tasks.forEach(function(t){ if(groups[t.availability]) groups[t.availability].items.push(t); });
       var html = '<div class="page-header"><div><h1>Việc của '+esc(APP.user.name)+'</h1><p class="sub">Tổng: '+tasks.length+' task</p></div>';
       html += '<button class="btn btn-outline" onclick="renderMyTasks()">Làm mới</button></div>';
