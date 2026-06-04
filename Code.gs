@@ -63,6 +63,7 @@ function seedDefaultData(ss) {
       [genId(), 'task', 'Chưa làm',   '#9E9E9E', 1],
       [genId(), 'task', 'Đang làm',   '#FF9800', 2],
       [genId(), 'task', 'Hoàn thành', '#4CAF50', 3],
+      [genId(), 'task', 'Treo',       '#9C27B0', 4],
     ];
     statuses.forEach(r => statusSheet.appendRow(r));
   }
@@ -451,9 +452,10 @@ function getEnrichedTasksForAssignee(assigneeId) {
   const taskStatuses = statuses.filter(s => s.entity_type === 'task');
 
   // Tìm status linh hoạt theo label
-  const doneStatus = findStatusByNorm(taskStatuses, 'hoànthanh')
-                  || findStatusByNorm(taskStatuses, 'đãxong');
-  const ipStatus   = findStatusByNorm(taskStatuses, 'đanglàm');
+  const doneStatus    = findStatusByNorm(taskStatuses, 'hoànthanh')
+                     || findStatusByNorm(taskStatuses, 'đãxong');
+  const ipStatus      = findStatusByNorm(taskStatuses, 'đanglàm');
+  const pendingStatus = findStatusByNorm(taskStatuses, 'treo');
 
   // Group + sort tasks theo job
   const tasksByJob = {};
@@ -474,20 +476,19 @@ function getEnrichedTasksForAssignee(assigneeId) {
     const prevTask     = jobTasks.find(t => Number(t.order) === myOrder - 1) || null;
     const prevPrevTask = jobTasks.find(t => Number(t.order) === myOrder - 2) || null;
 
-    const isDone       = doneStatus && task.status_id === doneStatus.id;
-    const isIP         = ipStatus   && task.status_id === ipStatus.id;
-    const prevIsDone   = !prevTask  || (doneStatus && prevTask.status_id === doneStatus.id);
-    const ppIsDone     = prevPrevTask && doneStatus && prevPrevTask.status_id === doneStatus.id;
+    const isDone      = doneStatus    && task.status_id === doneStatus.id;
+    const isIP        = ipStatus      && task.status_id === ipStatus.id;
+    const isPending   = pendingStatus && task.status_id === pendingStatus.id;
 
-    // Logic:
-    // done        = task này đã xong
-    // in_progress = task này đang làm
-    // ready       = task trước đã xong (hoặc là task đầu tiên) → có thể bắt đầu
-    // upcoming    = task trước CHƯA xong, nhưng task trước-trước ĐÃ xong → sắp đến lượt
-    // blocked     = task trước-trước chưa xong → chưa đến lượt
+    // Treo block task sau — không coi là done
+    const isPassable  = t => doneStatus && t.status_id === doneStatus.id;
+    const prevIsDone  = !prevTask    || isPassable(prevTask);
+    const ppIsDone    = prevPrevTask && isPassable(prevPrevTask);
+
     let availability;
-    if (isDone)        availability = 'done';
-    else if (isIP)     availability = 'in_progress';
+    if (isDone)          availability = 'done';
+    else if (isPending)  availability = 'pending';
+    else if (isIP)       availability = 'in_progress';
     else if (prevIsDone) availability = 'ready';
     else if (ppIsDone)   availability = 'upcoming';
     else                 availability = 'blocked';
