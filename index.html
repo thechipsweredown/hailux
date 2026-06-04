@@ -732,11 +732,15 @@ function openEmpTask(taskId) {
       var t = data.task, imgs = data.images;
       var tst = APP.stList('task');
       var st = tst.filter(function(s){ return s.id===t.status_id; })[0];
-      var doneS = tst.filter(function(s){ return s.label==='Hoàn thành'; })[0];
-      var ipS = tst.filter(function(s){ return s.label==='Đang làm'; })[0];
+      // So sánh không phân biệt hoa thường
+      var norm = function(s){ return (s||'').toLowerCase().replace(/\s/g,''); };
+      var doneS = tst.filter(function(s){ return norm(s.label)==='hoànthanh'||norm(s.label)==='đãxong'; })[0];
+      var ipS   = tst.filter(function(s){ return norm(s.label)==='đanglàm'; })[0];
+      var isDone = doneS && st && norm(st.label)===norm(doneS.label);
+      var isIP   = ipS   && st && norm(st.label)===norm(ipS.label);
       var html = '<div class="modal-hd"><h3>'+esc(t.name)+'</h3><button class="btn-x" onclick="closeModal()">✕</button></div>';
       html += '<div class="modal-bd">';
-      html += (st?'<div style="margin-bottom:16px"><span class="badge" style="background:'+st.color+'22;color:'+st.color+';font-size:.9rem;padding:6px 14px">'+st.label+'</span></div>':'');
+      html += (st?'<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px"><span class="badge" style="background:'+st.color+'22;color:'+st.color+';font-size:.9rem;padding:6px 14px">'+st.label+'</span><button class="btn btn-sm btn-outline" onclick="closeModal();openEmpJobView(\''+t.job_id+'\')">👜 Xem Job tổng thể</button></div>':'');
       html += (t.notes?'<div class="detail-box" style="margin-bottom:16px"><h4>Ghi chú từ quản lý</h4><p style="font-size:.88rem;white-space:pre-line">'+esc(t.notes)+'</p></div>':'');
       html += '<div class="divider"></div>';
       html += '<div class="fg" style="margin-bottom:16px"><label>Ghi chú khi làm</label><textarea id="emp-notes" placeholder="Ghi lại vấn đề, lưu ý...">'+esc(t.notes||'')+'</textarea></div>';
@@ -746,14 +750,53 @@ function openEmpTask(taskId) {
       imgs.forEach(function(img){ html += imgThumb(img,'task',taskId,'ei-'+taskId); });
       html += '</div></div></div>';
       html += '<div class="modal-ft" style="justify-content:space-between"><button class="btn btn-outline" onclick="closeModal()">Đóng</button><div style="display:flex;gap:8px">';
-      if (ipS && st && st.label!=='Đang làm' && st.label!=='Hoàn thành') html += '<button class="btn btn-outline" style="border-color:#FF9800;color:#FF9800" onclick="empUpdStatus(\''+taskId+'\',\''+ipS.id+'\',\''+t.job_id+'\')">Bắt đầu</button>';
-      if (doneS && st && st.label!=='Hoàn thành') html += '<button class="btn btn-green" onclick="empUpdStatus(\''+taskId+'\',\''+doneS.id+'\',\''+t.job_id+'\')">Hoàn thành</button>';
+      if (ipS && !isIP && !isDone) html += '<button class="btn btn-outline" style="border-color:#FF9800;color:#FF9800" onclick="empUpdStatus(\''+taskId+'\',\''+ipS.id+'\',\''+t.job_id+'\')">▶ Bắt đầu</button>';
+      if (doneS && !isDone) html += '<button class="btn btn-green" onclick="empUpdStatus(\''+taskId+'\',\''+doneS.id+'\',\''+t.job_id+'\')">✓ Hoàn thành</button>';
       html += '<button class="btn btn-blue" onclick="empSaveNotes(\''+taskId+'\',\''+t.job_id+'\')">Lưu</button>';
       html += '</div></div>';
       setModal(html);
     })
     .withFailureHandler(function(e){ setModal('<p class="empty">Lỗi: '+e.message+'</p>'); })
     .getTaskWithImages(taskId);
+}
+
+function openEmpJobView(jobId) {
+  showModal(spinner(), true);
+  google.script.run
+    .withSuccessHandler(function(job) {
+      var tst = APP.stList('task');
+      var html = '<div class="modal-hd"><h3>👜 '+esc(job.code)+' — '+esc(job.name)+'</h3><button class="btn-x" onclick="closeModal()">✕</button></div>';
+      html += '<div class="modal-bd">';
+      // Job info
+      html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">';
+      if (job.status) html += '<span class="badge" style="background:'+job.status.color+'22;color:'+job.status.color+'">'+job.status.label+'</span>';
+      if (job.deadline) html += '<span class="chip">⏰ Deadline: '+fmtDate(job.deadline)+'</span>';
+      if (job.category) html += '<span class="chip">'+esc(job.category)+'</span>';
+      html += '</div>';
+      if (job.repair_scope) html += '<div class="detail-box" style="margin-bottom:16px"><h4>Hạng mục sửa</h4><p style="font-size:.88rem;white-space:pre-line">'+esc(job.repair_scope)+'</p></div>';
+      // DAG
+      html += '<div style="margin-bottom:8px"><strong>Luồng công việc</strong></div>';
+      html += renderDAG(job.tasks, tst);
+      // Task list (read-only, chỉ hiển thị task của mình nổi bật)
+      html += '<div style="margin-bottom:8px"><strong>Tất cả task ('+job.tasks.length+')</strong></div>';
+      var myId = APP.user ? APP.user.id : '';
+      job.tasks.forEach(function(t, i) {
+        var st = tst.filter(function(s){ return s.id===t.status_id; })[0];
+        var asgn = APP.user_by_id(t.assignee_id);
+        var isMe = t.assignee_id === myId;
+        html += '<div class="task-item" style="'+(isMe?'border-color:#4361ee;background:#f0f4ff':'')+'">';
+        html += '<div class="task-num" style="'+(isMe?'background:#e94560':'')+'">'+( t.order||i+1)+'</div>';
+        html += '<div class="task-info"><div class="task-name">'+esc(t.name||'—')+(isMe?' <span style="color:#e94560;font-size:.75rem">← của bạn</span>':'')+'</div>';
+        html += '<div class="task-meta">'+esc(asgn?asgn.name:'—')+'</div></div>';
+        html += (st?'<span class="badge" style="background:'+st.color+'22;color:'+st.color+'">'+st.label+'</span>':'');
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '<div class="modal-ft"><button class="btn btn-outline" onclick="closeModal()">Đóng</button></div>';
+      setModal(html);
+    })
+    .withFailureHandler(function(e){ setModal('<p class="empty">Lỗi: '+e.message+'</p>'); })
+    .getJobWithDetails(jobId);
 }
 
 function empUpdStatus(taskId, statusId, jobId) {
