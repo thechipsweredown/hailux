@@ -863,7 +863,16 @@ function changePw() { var pw=gv('new-pw'); if(!pw) return; google.script.run.wit
 function addUser() { var n=gv('new-uname').trim(); if(!n) return; google.script.run.withSuccessHandler(function(){ toast('Đã thêm','ok'); renderSettings(); }).withFailureHandler(function(e){toast(e.message,'err');}).createUser({name:n,role:'employee'}); }
 function delUser(id) { if(!confirm('Xóa nhân viên này?')) return; google.script.run.withSuccessHandler(function(){ toast('Đã xóa','ok'); renderSettings(); }).withFailureHandler(function(e){toast(e.message,'err');}).deleteUser(id); }
 function toggleRole(id, name, role) { google.script.run.withSuccessHandler(function(){ toast('Đã cập nhật','ok'); renderSettings(); }).withFailureHandler(function(e){toast(e.message,'err');}).updateUser(id,{role:role==='manager'?'employee':'manager'}); }
-function addStatus(type) { var l=gv('new-'+type+'st-lbl').trim(); if(!l) return; var c=gv('new-'+type+'st-col'); google.script.run.withSuccessHandler(function(){ toast('Đã thêm','ok'); renderSettings(); }).withFailureHandler(function(e){toast(e.message,'err');}).createStatus({entity_type:type,label:l,color:c,order:99}); }
+function addStatus(type) {
+  var prefix = type === 'job' ? 'new-jst' : 'new-tst';
+  var l = gv(prefix+'-lbl').trim();
+  if (!l) { toast('Vui lòng nhập tên trạng thái','err'); return; }
+  var c = gv(prefix+'-col');
+  google.script.run
+    .withSuccessHandler(function(){ toast('Đã thêm','ok'); renderSettings(); })
+    .withFailureHandler(function(e){ toast(e.message,'err'); })
+    .createStatus({entity_type:type, label:l, color:c, order:99});
+}
 function delStatus(id) { if(!confirm('Xóa trạng thái?')) return; google.script.run.withSuccessHandler(function(){ toast('Đã xóa','ok'); renderSettings(); }).withFailureHandler(function(e){toast(e.message,'err');}).deleteStatus(id); }
 function addTmpl() { var n=gv('new-tmpl').trim(); if(!n) return; google.script.run.withSuccessHandler(function(){ toast('Đã thêm','ok'); renderSettings(); }).withFailureHandler(function(e){toast(e.message,'err');}).createTaskTemplate({name:n}); }
 function delTmpl(id) { google.script.run.withSuccessHandler(function(){ toast('Đã xóa','ok'); renderSettings(); }).withFailureHandler(function(e){toast(e.message,'err');}).deleteTaskTemplate(id); }
