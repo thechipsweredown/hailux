@@ -432,7 +432,7 @@ function renderJobsTable() {
     html += '<td>'+(j.deadline
       ? '<div style="font-size:.85rem;font-weight:'+(over?'700':'500')+';color:'+(over?'#e94560':'#333')+'">'
         +fmtDate(j.deadline)+'</div>'
-        +(daysLeft!==null && !over && daysLeft<=7 ? '<div style="font-size:.75rem;color:#FF9800">còn '+daysLeft+' ngày</div>'
+        +(daysLeft!==null && !over && daysLeft>=0 && daysLeft<=7 ? '<div style="font-size:.75rem;color:#FF9800">còn '+daysLeft+' ngày</div>'
         : over ? '<div style="font-size:.75rem;color:#e94560">quá '+Math.abs(daysLeft)+' ngày</div>' : '')
       : '<span style="color:#ccc">—</span>')+'</td>';
     html += '<td><span style="font-family:monospace;font-weight:600;font-size:.88rem">'+(j.revenue?Number(j.revenue).toLocaleString('vi-VN')+'đ':'<span style="color:#ccc">—</span>')+'</span></td>';
@@ -844,7 +844,7 @@ function renderTasksContent() {
       html += '<td>'+(dl
         ? '<div style="font-size:.85rem;font-weight:'+(over?700:400)+';color:'+(over?'#e94560':'#333')+'">'+fmtDate(dl)+'</div>'
           +(over?'<div style="font-size:.75rem;color:#e94560">quá '+Math.abs(daysLeft)+' ngày</div>'
-          :daysLeft!==null&&daysLeft<=3?'<div style="font-size:.75rem;color:#FF9800">còn '+daysLeft+' ngày</div>':'')
+          :daysLeft!==null&&daysLeft>=0&&daysLeft<=3?'<div style="font-size:.75rem;color:#FF9800">còn '+daysLeft+' ngày</div>':'')
         :'<span style="color:#ccc">—</span>')+'</td>';
       html += '<td style="font-size:.82rem;color:#888;max-width:180px">'+esc(t.notes||'')+'</td>';
       html += '</tr>';
