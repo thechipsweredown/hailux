@@ -737,24 +737,32 @@ function openTaskImgs(taskId, taskName) {
 }
 
 // ---- ALL TASKS (Manager view) ----
-var _taskFilters = { assignee_id:'', deadline_from:'', deadline_to:'' };
+function defaultTaskFilters() {
+  var to = new Date(); var from = new Date(); from.setDate(from.getDate()-90);
+  return { assignee_id:'', status_id:'', deadline_from: from.toISOString().split('T')[0], deadline_to: to.toISOString().split('T')[0] };
+}
+var _taskFilters = defaultTaskFilters();
+var _taskPageSize = 15;
+var _taskPages = {}; // { status_id: currentPage }
 
 function renderAllTasks() {
   var el = document.getElementById('pg-tasks');
   var emps = APP.emps();
+  var tst  = APP.stList('task');
 
-  // Filter bar
   var fb = '<div style="background:#fff;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.06)">';
   fb += '<span style="font-size:.85rem;font-weight:600;color:#555">Lọc:</span>';
-  fb += '<select id="tf-assignee" style="padding:6px 10px;font-size:.83rem;max-width:160px" onchange="_taskFilters.assignee_id=this.value;loadAllTasks()">';
-  fb += '<option value="">Tất cả nhân viên</option>';
+  fb += '<select id="tf-assignee" style="padding:6px 10px;font-size:.83rem;max-width:160px" onchange="_taskFilters.assignee_id=this.value;_taskPages={};loadAllTasks()">';
+  fb += '<option value="">Tất cả NV</option>';
   emps.forEach(function(u){ fb += '<option value="'+u.id+'"'+(_taskFilters.assignee_id===u.id?' selected':'')+'>'+esc(u.name)+'</option>'; });
   fb += '</select>';
-  fb += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">Deadline từ</label><input type="date" id="tf-from" value="'+_taskFilters.deadline_from+'" style="width:140px;padding:6px 10px;font-size:.83rem" onchange="_taskFilters.deadline_from=this.value;loadAllTasks()"></div>';
-  fb += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">đến</label><input type="date" id="tf-to" value="'+_taskFilters.deadline_to+'" style="width:140px;padding:6px 10px;font-size:.83rem" onchange="_taskFilters.deadline_to=this.value;loadAllTasks()"></div>';
-  if (_taskFilters.assignee_id||_taskFilters.deadline_from||_taskFilters.deadline_to) {
-    fb += '<button class="btn btn-sm btn-ghost" onclick="_taskFilters={assignee_id:\'\',deadline_from:\'\',deadline_to:\'\'};renderAllTasks()">✕ Xoá lọc</button>';
-  }
+  fb += '<select id="tf-status" style="padding:6px 10px;font-size:.83rem;max-width:150px" onchange="_taskFilters.status_id=this.value;_taskPages={};loadAllTasks()">';
+  fb += '<option value="">Tất cả TT</option>';
+  tst.forEach(function(s){ fb += '<option value="'+s.id+'"'+(_taskFilters.status_id===s.id?' selected':'')+'>'+esc(s.label)+'</option>'; });
+  fb += '</select>';
+  fb += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">Deadline từ</label><input type="date" id="tf-from" value="'+_taskFilters.deadline_from+'" style="width:135px;padding:6px 10px;font-size:.83rem" onchange="_taskFilters.deadline_from=this.value;_taskPages={};loadAllTasks()"></div>';
+  fb += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">đến</label><input type="date" id="tf-to" value="'+_taskFilters.deadline_to+'" style="width:135px;padding:6px 10px;font-size:.83rem" onchange="_taskFilters.deadline_to=this.value;_taskPages={};loadAllTasks()"></div>';
+  fb += '<button class="btn btn-sm btn-ghost" onclick="_taskFilters=defaultTaskFilters();_taskPages={};renderAllTasks()">↺ Mặc định</button>';
   fb += '</div>';
 
   el.innerHTML = '<div class="page-header"><div><h1>Đầu việc</h1><p class="sub">Tất cả task theo trạng thái</p></div></div>'
@@ -762,73 +770,105 @@ function renderAllTasks() {
   loadAllTasks();
 }
 
+var _allTasksCache = [];
+
 function loadAllTasks() {
   var el = document.getElementById('tasks-content');
   if (el) el.innerHTML = spinner();
   google.script.run
     .withSuccessHandler(function(tasks) {
-      var el2 = document.getElementById('tasks-content');
-      if (!el2) return;
-      var tst = APP.stList('task');
-
-      // Group by status
-      var groups = {};
-      tst.forEach(function(s){ groups[s.id] = { status: s, items: [] }; });
-      groups['__none'] = { status: null, items: [] };
-
-      tasks.forEach(function(t){
-        if (groups[t.status_id]) groups[t.status_id].items.push(t);
-        else groups['__none'].items.push(t);
-      });
-
-      // Sort groups: in_progress → ready → todo → pending → done
-      var norm = function(s){ return (s||'').toLowerCase().replace(/\s/g,''); };
-      var order = { 'đanglàm':1, 'chưalàm':2, 'treo':3, 'hoànthanh':4, 'đãxong':4 };
-      var sortedGroups = Object.values(groups)
-        .filter(function(g){ return g.items.length > 0; })
-        .sort(function(a,b){
-          var oa = a.status ? (order[norm(a.status.label)]||5) : 5;
-          var ob = b.status ? (order[norm(b.status.label)]||5) : 5;
-          return oa - ob;
-        });
-
-      if (!sortedGroups.length) { el2.innerHTML = '<div class="empty">Không có task nào</div>'; return; }
-
-      var html = '';
-      sortedGroups.forEach(function(g) {
-        var s = g.status;
-        var color = s ? s.color : '#9E9E9E';
-        html += '<div style="margin-bottom:24px">';
-        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
-        html += '<span style="width:12px;height:12px;border-radius:50%;background:'+color+';display:inline-block"></span>';
-        html += '<strong style="font-size:.95rem">'+(s?s.label:'Không rõ')+'</strong>';
-        html += '<span class="chip">'+g.items.length+'</span></div>';
-
-        // Table
-        html += '<div class="card"><div class="tbl-wrap"><table><thead><tr>';
-        html += '<th>Đầu việc</th><th>Job</th><th>Nhân viên</th><th>Deadline</th><th>Ghi chú</th></tr></thead><tbody>';
-        g.items.forEach(function(t) {
-          var dl = t.effective_deadline;
-          var over = dl && new Date(dl) < new Date() && s && norm(s.label) !== 'hoànthanh' && norm(s.label) !== 'đãxong';
-          var daysLeft = dl ? Math.ceil((new Date(dl)-new Date())/86400000) : null;
-          html += '<tr>';
-          html += '<td><strong>'+esc(t.name||'—')+'</strong></td>';
-          html += '<td><div style="font-size:.85rem;font-weight:500">'+esc(t.job?t.job.code:'—')+'</div><div style="font-size:.78rem;color:#aaa">'+esc(t.job?t.job.name:'')+'</div></td>';
-          html += '<td><span style="font-size:.85rem">'+(t.assignee?esc(t.assignee.name):'<span style="color:#ccc">Chưa phân công</span>')+'</span></td>';
-          html += '<td>'+(dl
-            ? '<div style="font-size:.85rem;font-weight:'+(over?'700':'400')+';color:'+(over?'#e94560':'#333')+'">'+fmtDate(dl)+'</div>'
-              +(over?'<div style="font-size:.75rem;color:#e94560">quá '+Math.abs(daysLeft)+' ngày</div>'
-              : daysLeft!==null && daysLeft<=3 ? '<div style="font-size:.75rem;color:#FF9800">còn '+daysLeft+' ngày</div>' : '')
-            : '<span style="color:#ccc">—</span>')+'</td>';
-          html += '<td style="font-size:.82rem;color:#888;max-width:200px">'+esc(t.notes||'')+'</td>';
-          html += '</tr>';
-        });
-        html += '</tbody></table></div></div></div>';
-      });
-      el2.innerHTML = html;
+      _allTasksCache = tasks || [];
+      renderTasksContent();
     })
     .withFailureHandler(function(e){ var c=document.getElementById('tasks-content'); if(c) c.innerHTML='<p class="empty">Lỗi: '+e.message+'</p>'; })
     .getAllTasksWithDetails(_taskFilters);
+}
+
+function renderTasksContent() {
+  var el2 = document.getElementById('tasks-content');
+  if (!el2) return;
+  var tasks = _allTasksCache;
+  var tst = APP.stList('task');
+  var norm = function(s){ return (s||'').toLowerCase().replace(/\s/g,''); };
+
+  // Group by status, priority order
+  var order = { 'đanglàm':1, 'chưalàm':2, 'treo':3, 'hoànthanh':4, 'đãxong':4 };
+  var groups = {};
+  tst.forEach(function(s){ groups[s.id] = { status: s, items: [] }; });
+
+  tasks.forEach(function(t){
+    // Bỏ qua task của job không có tasks configured (job.task_count === 0 không thể xảy ra vì task này tồn tại)
+    if (!t.job) return;
+    if (groups[t.status_id]) groups[t.status_id].items.push(t);
+  });
+
+  var sortedGroups = Object.values(groups)
+    .filter(function(g){ return g.items.length > 0; })
+    .sort(function(a,b){
+      var oa = a.status ? (order[norm(a.status.label)]||5) : 5;
+      var ob = b.status ? (order[norm(b.status.label)]||5) : 5;
+      return oa - ob;
+    });
+
+  if (!sortedGroups.length) { el2.innerHTML = '<div class="empty">Không có task nào</div>'; return; }
+
+  var html = '';
+  sortedGroups.forEach(function(g) {
+    var s = g.status;
+    var sid = s ? s.id : '__none';
+    var color = s ? s.color : '#9E9E9E';
+    var isActive = s && (norm(s.label) === 'đanglàm');
+    var page = _taskPages[sid] || 1;
+    var pageSize = isActive ? g.items.length : _taskPageSize; // Đang làm: hiện tất cả
+    var total = g.items.length;
+    var totalPages = Math.ceil(total / pageSize);
+    var pageItems = isActive ? g.items : g.items.slice((page-1)*pageSize, page*pageSize);
+
+    html += '<div style="margin-bottom:24px">';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+    html += '<span style="width:12px;height:12px;border-radius:50%;background:'+color+';display:inline-block"></span>';
+    html += '<strong style="font-size:.95rem">'+(s?s.label:'Không rõ')+'</strong>';
+    html += '<span class="chip">'+total+'</span></div>';
+    html += '<div class="card"><div class="tbl-wrap"><table><thead><tr>';
+    html += '<th>Đầu việc</th><th>Job</th><th>Nhân viên</th><th>Deadline</th><th>Ghi chú</th></tr></thead><tbody>';
+
+    pageItems.forEach(function(t) {
+      var dl = t.effective_deadline;
+      var isDone = s && (norm(s.label)==='hoànthanh'||norm(s.label)==='đãxong');
+      var over = dl && new Date(dl) < new Date() && !isDone;
+      var daysLeft = dl ? Math.ceil((new Date(dl)-new Date())/86400000) : null;
+      html += '<tr>';
+      html += '<td><strong>'+esc(t.name||'—')+'</strong></td>';
+      html += '<td><div style="font-size:.85rem;font-weight:500">'+esc(t.job?t.job.code:'—')+'</div><div style="font-size:.78rem;color:#aaa">'+esc(t.job?t.job.name:'')+'</div></td>';
+      html += '<td>'+(t.assignee?'<span style="font-size:.85rem">'+esc(t.assignee.name)+'</span>':'<span style="color:#ccc;font-size:.82rem">Chưa phân công</span>')+'</td>';
+      html += '<td>'+(dl
+        ? '<div style="font-size:.85rem;font-weight:'+(over?700:400)+';color:'+(over?'#e94560':'#333')+'">'+fmtDate(dl)+'</div>'
+          +(over?'<div style="font-size:.75rem;color:#e94560">quá '+Math.abs(daysLeft)+' ngày</div>'
+          :daysLeft!==null&&daysLeft<=3?'<div style="font-size:.75rem;color:#FF9800">còn '+daysLeft+' ngày</div>':'')
+        :'<span style="color:#ccc">—</span>')+'</td>';
+      html += '<td style="font-size:.82rem;color:#888;max-width:180px">'+esc(t.notes||'')+'</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // Pagination controls
+    if (!isActive && totalPages > 1) {
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid #f0f0f0">';
+      html += '<span style="font-size:.82rem;color:#888">'+((page-1)*pageSize+1)+' – '+Math.min(page*pageSize,total)+' / '+total+' task</span>';
+      html += '<div style="display:flex;gap:6px">';
+      html += '<button class="btn btn-sm btn-outline" '+(page<=1?'disabled':'')+' onclick="_taskPages[\''+sid+'\']='+( page-1)+';renderTasksContent()">‹ Trước</button>';
+      // Page numbers
+      for (var p=1;p<=totalPages;p++) {
+        html += '<button class="btn btn-sm '+(p===page?'btn-blue':'btn-outline')+'" onclick="_taskPages[\''+sid+'\']='+p+';renderTasksContent()">'+p+'</button>';
+      }
+      html += '<button class="btn btn-sm btn-outline" '+(page>=totalPages?'disabled':'')+' onclick="_taskPages[\''+sid+'\']='+( page+1)+';renderTasksContent()">Sau ›</button>';
+      html += '</div></div>';
+    } else if (!isActive) {
+      html += '<div style="padding:8px 16px;font-size:.82rem;color:#aaa;border-top:1px solid #f0f0f0">'+total+' task</div>';
+    }
+    html += '</div></div>';
+  });
+  el2.innerHTML = html;
 }
 
 // ---- MY TASKS ----

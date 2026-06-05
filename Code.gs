@@ -706,7 +706,9 @@ function getAllTasksWithDetails(filters) {
       effective_deadline: t.deadline || (jobMap[t.job_id] ? jobMap[t.job_id].deadline : ''),
     }))
     .filter(t => {
+      if (!t.job) return false; // bỏ qua task không có job
       if (filters.assignee_id && t.assignee_id !== filters.assignee_id) return false;
+      if (filters.status_id   && t.status_id   !== filters.status_id)   return false;
       if (filters.deadline_from && t.effective_deadline && t.effective_deadline < filters.deadline_from) return false;
       if (filters.deadline_to   && t.effective_deadline && t.effective_deadline > filters.deadline_to + 'T23:59:59') return false;
       return true;
