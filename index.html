@@ -229,6 +229,7 @@ window.onload = function() {
       APP.statuses = d.statuses || [];
       APP.taskTemplates = d.taskTemplates || [];
       APP.settings = d.settings || [];
+      APP.categories = d.categories || [];
       var sel = document.getElementById('sel-emp');
       APP.emps().forEach(function(u) {
         var o = document.createElement('option');
@@ -311,11 +312,35 @@ function goTo(page) {
 }
 
 // ---- DASHBOARD ----
+var _dashFilters = { dateFrom: '', dateTo: '', category: '' };
+
 function renderDashboard() {
   var el = document.getElementById('pg-dashboard');
-  el.innerHTML = spinner();
+  // Filter bar (render ngay, không cần đợi server)
+  var cats = APP.categories || [];
+  var filterBar = '<div style="background:#fff;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.06)">';
+  filterBar += '<span style="font-size:.85rem;font-weight:600;color:#555">Lọc:</span>';
+  filterBar += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">Từ</label><input type="date" id="d-from" value="'+esc(_dashFilters.dateFrom)+'" style="width:140px;padding:6px 10px;font-size:.83rem" onchange="_dashFilters.dateFrom=this.value;loadDashboard()"></div>';
+  filterBar += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">Đến</label><input type="date" id="d-to" value="'+esc(_dashFilters.dateTo)+'" style="width:140px;padding:6px 10px;font-size:.83rem" onchange="_dashFilters.dateTo=this.value;loadDashboard()"></div>';
+  filterBar += '<select id="d-cat" style="padding:6px 10px;font-size:.83rem;max-width:160px" onchange="_dashFilters.category=this.value;loadDashboard()">';
+  filterBar += '<option value="">Tất cả loại KH</option>';
+  cats.forEach(function(c){ filterBar += '<option value="'+esc(c)+'"'+(_dashFilters.category===c?' selected':'')+'>'+esc(c)+'</option>'; });
+  filterBar += '</select>';
+  if (_dashFilters.dateFrom||_dashFilters.dateTo||_dashFilters.category) {
+    filterBar += '<button class="btn btn-sm btn-ghost" onclick="_dashFilters={dateFrom:\'\',dateTo:\'\',category:\'\'};renderDashboard()">✕ Xoá lọc</button>';
+  }
+  filterBar += '</div>';
+  el.innerHTML = filterBar + '<div id="dash-content">'+spinner()+'</div>';
+  loadDashboard();
+}
+
+function loadDashboard() {
+  var el = document.getElementById('dash-content');
+  if (el) el.innerHTML = spinner();
   google.script.run
     .withSuccessHandler(function(s) {
+      var el2 = document.getElementById('dash-content');
+      if (!el2) return;
       var fmt = function(n){ return Number(n).toLocaleString('vi-VN')+'đ'; };
       var html = '<div class="page-header"><div><h1>Dashboard</h1><p class="sub">Tổng quan công việc</p></div></div>';
       html += '<div class="stats-grid">';
@@ -342,10 +367,10 @@ function renderDashboard() {
         html += '<tr><td><strong>'+e.name+'</strong></td><td>'+e.total+'</td><td><span class="badge" style="background:#fff3e0;color:#FF9800">'+e.in_progress+'</span></td><td>'+e.todo+'</td><td><span class="badge" style="background:#e8f5e9;color:#4CAF50">'+e.done+'</span></td></tr>';
       });
       html += '</tbody></table></div></div>';
-      el.innerHTML = html;
+      el2.innerHTML = html;
     })
-    .withFailureHandler(function(e){ el.innerHTML = '<p class="empty">Lỗi: '+e.message+'</p>'; })
-    .getDashboardStats();
+    .withFailureHandler(function(e){ var c=document.getElementById('dash-content'); if(c) c.innerHTML='<p class="empty">Lỗi: '+e.message+'</p>'; })
+    .getDashboardStats(_dashFilters);
 }
 
 // ---- JOBS ----
