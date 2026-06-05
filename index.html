@@ -748,6 +748,50 @@ function uploadFilesSequential(files, index, type, id, gridId, done) {
   reader.readAsDataURL(file);
 }
 
+function uploadEvidence(input, taskId) {
+  var files = Array.prototype.slice.call(input.files);
+  if (!files.length) return;
+  var grid = document.getElementById('ei-'+taskId);
+  files.forEach(function(file) {
+    var ph = document.createElement('div');
+    ph.className = 'img-th img-uploading';
+    ph.innerHTML = '<div class="spin"></div>';
+    if (grid) grid.appendChild(ph);
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var b64 = e.target.result.split(',')[1];
+      google.script.run
+        .withSuccessHandler(function(result) {
+          var cdnUrl  = result.cdn_url;
+          var viewUrl = 'https://drive.google.com/file/d/'+result.drive_file_id+'/view';
+          var d = document.createElement('div');
+          d.className = 'img-th';
+          d.innerHTML = '<img src="'+cdnUrl+'" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" onclick="openLightbox(\''+cdnUrl+'\',\''+viewUrl+'\')">'
+            + '<button class="img-del" onclick="event.stopPropagation();delEvidence(\''+taskId+'\',\''+result.drive_file_id+'\',\'ei-'+taskId+'\')">✕</button>';
+          if (ph.parentNode) ph.parentNode.replaceChild(d, ph);
+          toast('Đã tải ảnh','ok');
+        })
+        .withFailureHandler(function(er){ if(ph.parentNode)ph.remove(); toast(er.message,'err'); })
+        .uploadTaskEvidence(b64, file.type, file.name, taskId, APP.user?APP.user.name:'');
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function delEvidence(taskId, fileId, gridId) {
+  if (!confirm('Xóa ảnh này?')) return;
+  google.script.run
+    .withSuccessHandler(function() {
+      toast('Đã xóa','ok');
+      // Refresh task modal
+      closeModal();
+      openEmpTask(taskId);
+    })
+    .withFailureHandler(function(e){ toast(e.message,'err'); })
+    .deleteTaskEvidence(taskId, fileId);
+}
+
 function uploadAvatar(input, jobId) {
   var file = input.files[0];
   if (!file) return;
@@ -1045,10 +1089,16 @@ function openEmpTask(taskId) {
       html += (t.notes?'<div class="detail-box" style="margin-bottom:16px"><h4>Ghi chú từ quản lý</h4><p style="font-size:.88rem;white-space:pre-line">'+esc(t.notes)+'</p></div>':'');
       html += '<div class="divider"></div>';
       html += '<div class="fg" style="margin-bottom:16px"><label>Ghi chú khi làm</label><textarea id="emp-notes" placeholder="Ghi lại vấn đề, lưu ý...">'+esc(t.notes||'')+'</textarea></div>';
-      html += '<div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><strong>Ảnh evidence ('+imgs.length+')</strong><button class="btn btn-sm btn-outline" onclick="document.getElementById(\'euf-'+taskId+'\').click()">+ Tải ảnh</button></div>';
-      html += '<input type="file" id="euf-'+taskId+'" accept="image/*" multiple style="display:none" onchange="handleUpload(this,\'task\',\''+taskId+'\',\'ei-'+taskId+'\')">';
+      html += '<div>';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><strong>Ảnh bằng chứng ('+imgs.length+')</strong><button class="btn btn-sm btn-outline" onclick="document.getElementById(\'euf-'+taskId+'\').click()">+ Tải ảnh</button></div>';
+      html += '<input type="file" id="euf-'+taskId+'" accept="image/*" multiple style="display:none" onchange="uploadEvidence(this,\''+taskId+'\')">';
       html += '<div class="imgs-grid" id="ei-'+taskId+'">';
-      imgs.forEach(function(img){ html += imgThumb(img,'task',taskId,'ei-'+taskId); });
+      imgs.forEach(function(img){
+        var cdnUrl = img.cdn_url || 'https://lh3.googleusercontent.com/d/'+img.drive_file_id;
+        var viewUrl = 'https://drive.google.com/file/d/'+img.drive_file_id+'/view';
+        html += '<div class="img-th"><img src="'+cdnUrl+'" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" onclick="openLightbox(\''+cdnUrl+'\',\''+viewUrl+'\')">'
+          + '<button class="img-del" onclick="event.stopPropagation();delEvidence(\''+taskId+'\',\''+img.drive_file_id+'\',\'ei-'+taskId+'\')">✕</button></div>';
+      });
       html += '</div></div></div>';
       html += '<div class="modal-ft" style="justify-content:space-between"><button class="btn btn-outline" onclick="closeModal()">Đóng</button><div style="display:flex;gap:8px">';
       if (ipS && !isIP && !isDone) html += '<button class="btn btn-outline" style="border-color:#FF9800;color:#FF9800" onclick="empUpdStatus(\''+taskId+'\',\''+ipS.id+'\',\''+t.job_id+'\')">▶ Bắt đầu</button>';
