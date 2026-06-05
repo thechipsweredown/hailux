@@ -287,12 +287,27 @@ function getJob(id) {
 }
 
 function getJobsWithStats() {
-  const jobs  = getJobs();
-  const tasks = getTasks();
+  const jobs   = getJobs();
+  const tasks  = getTasks();
+  const images = sheetToObjects(getSheet('Images'));
+
+  // index ảnh theo job
+  const imgByJob = {};
+  images.forEach(img => {
+    if (img.entity_type === 'job' && !imgByJob[img.entity_id]) {
+      imgByJob[img.entity_id] = img.drive_file_id;
+    }
+  });
+
   return jobs.map(j => {
-    const jobTasks   = tasks.filter(t => t.job_id === j.id);
-    const assignees  = [...new Set(jobTasks.map(t => t.assignee_id).filter(Boolean))];
-    return { ...j, task_count: jobTasks.length, assignee_count: assignees.length };
+    const jobTasks  = tasks.filter(t => t.job_id === j.id);
+    const assignees = [...new Set(jobTasks.map(t => t.assignee_id).filter(Boolean))];
+    return {
+      ...j,
+      task_count:     jobTasks.length,
+      assignee_count: assignees.length,
+      first_image_id: imgByJob[j.id] || null,
+    };
   });
 }
 
