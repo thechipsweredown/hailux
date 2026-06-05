@@ -643,14 +643,17 @@ function uploadImage(base64Data, mimeType, filename, entityType, entityId, uploa
   const file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-  const driveUrl = `https://drive.google.com/uc?export=view&id=${file.getId()}`;
+  const fileId   = file.getId();
+  // thumbnail URL hoạt động tốt nhất trong iframe Apps Script
+  const driveUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800-h800`;
+  const viewUrl  = `https://drive.google.com/file/d/${fileId}/view`;
 
   const sheet = getSheet('Images');
   const id = genId();
   const now = new Date().toISOString();
-  sheet.appendRow([id, entityType, entityId, file.getId(), driveUrl, uploadedBy, now, caption || '']);
+  sheet.appendRow([id, entityType, entityId, fileId, driveUrl, uploadedBy, now, caption || '']);
 
-  return { id, entity_type: entityType, entity_id: entityId, drive_file_id: file.getId(), drive_url: driveUrl, uploaded_by: uploadedBy, uploaded_at: now, caption };
+  return { id, entity_type: entityType, entity_id: entityId, drive_file_id: fileId, drive_url: driveUrl, view_url: viewUrl, uploaded_by: uploadedBy, uploaded_at: now, caption };
 }
 
 function deleteImage(id) {

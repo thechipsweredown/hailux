@@ -118,6 +118,18 @@ textarea{resize:vertical;min-height:80px}
 .img-th img{width:100%;height:100%;object-fit:cover}
 .img-del{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:22px;height:22px;font-size:.7rem;display:flex;align-items:center;justify-content:center;opacity:0;transition:.2s;border:none}
 .img-th:hover .img-del{opacity:1}
+.img-th img{width:100%;height:100%;object-fit:cover;transition:.2s}
+.img-th:hover img{opacity:.9}
+.img-broken{display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:#ccc;font-size:1.5rem;background:#f5f5f5}
+.img-uploading{display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#f0f4ff}
+.upload-zone{border:2px dashed #d0d9ff;border-radius:10px;padding:20px;text-align:center;color:#aaa;cursor:pointer;transition:.2s;background:#fafbff}
+.upload-zone:hover{border-color:#4361ee;color:#4361ee;background:#f0f4ff}
+.upload-zone.drag-over{border-color:#4361ee;background:#e8eeff;color:#4361ee}
+/* Lightbox */
+.lb-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9998;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+.lb-img{max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.lb-close{position:fixed;top:16px;right:20px;color:#fff;font-size:2rem;cursor:pointer;z-index:9999;background:none;border:none;opacity:.8}
+.lb-close:hover{opacity:1}
 .set-sec{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:20px}
 .set-sec h3{font-size:1rem;font-weight:700;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f0f0f0}
 .set-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f5f5f5;font-size:.9rem}
@@ -524,11 +536,18 @@ function openJobDetail(jobId) {
       jst.forEach(function(s){ html += '<option value="'+s.id+'"'+(job.status_id===s.id?' selected':'')+'>'+s.label+'</option>'; });
       html += '</select></span></div></div></div>';
       if (job.repair_scope) { html += '<div class="detail-box" style="margin-top:12px"><h4>Hạng mục sửa</h4><p style="font-size:.88rem;white-space:pre-line">'+esc(job.repair_scope)+'</p></div>'; }
-      html += '<div style="margin-top:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><strong>Hình ảnh Job</strong><button class="btn btn-sm btn-outline" onclick="trigUpload(\'job\',\''+job.id+'\',\'ji-'+job.id+'\')">+ Thêm ảnh</button></div>';
+      html += '<div style="margin-top:20px">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><strong>Hình ảnh Job</strong><button class="btn btn-sm btn-outline" onclick="trigUpload(\'job\',\''+job.id+'\',\'ji-'+job.id+'\')">+ Thêm ảnh</button></div>';
       html += '<input type="file" id="uf-job-'+job.id+'" accept="image/*" multiple style="display:none" onchange="handleUpload(this,\'job\',\''+job.id+'\',\'ji-'+job.id+'\')">';
-      html += '<div class="imgs-grid" id="ji-'+job.id+'">';
-      (job.images||[]).forEach(function(img){ html += imgThumb(img,'job',job.id,'ji-'+job.id); });
-      html += '</div></div>';
+      if ((job.images||[]).length === 0) {
+        html += '<div class="upload-zone" id="ji-'+job.id+'" onclick="trigUpload(\'job\',\''+job.id+'\',\'ji-'+job.id+'\')" ondragover="event.preventDefault();this.classList.add(\'drag-over\')" ondragleave="this.classList.remove(\'drag-over\')" ondrop="event.preventDefault();this.classList.remove(\'drag-over\');handleDropFiles(event.dataTransfer.files,\'job\',\''+job.id+'\',\'ji-'+job.id+'\')">';
+        html += '<div style="font-size:1.5rem;margin-bottom:6px">📷</div><div style="font-size:.85rem">Kéo thả ảnh vào đây hoặc click để chọn</div></div>';
+      } else {
+        html += '<div class="imgs-grid" id="ji-'+job.id+'">';
+        (job.images||[]).forEach(function(img){ html += imgThumb(img,'job',job.id,'ji-'+job.id); });
+        html += '</div>';
+      }
+      html += '</div>';
       html += '<div style="margin-top:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><strong>Luồng Task</strong></div>';
       html += renderDAG(job.tasks, tst);
       html += '</div>';
@@ -678,33 +697,83 @@ function trigUpload(type, id, gridId) {
 }
 
 function handleUpload(input, type, id, gridId) {
-  var files = input.files;
+  var files = Array.prototype.slice.call(input.files);
   if (!files.length) return;
-  var file = files[0];
+  uploadFilesSequential(files, 0, type, id, gridId, function(){ input.value = ''; });
+}
+
+function uploadFilesSequential(files, index, type, id, gridId, done) {
+  if (index >= files.length) { done && done(); return; }
+  var file = files[index];
+  var grid = document.getElementById(gridId);
+
+  // Thêm placeholder loading
+  var placeholder = null;
+  if (grid) {
+    placeholder = document.createElement('div');
+    placeholder.className = 'img-th img-uploading';
+    placeholder.innerHTML = '<div class="spin"></div>';
+    grid.appendChild(placeholder);
+  }
+
   var reader = new FileReader();
   reader.onload = function(e) {
     var b64 = e.target.result.split(',')[1];
-    toast('Đang tải ảnh...');
     google.script.run
       .withSuccessHandler(function(img) {
-        toast('Đã tải ảnh','ok');
-        var grid = document.getElementById(gridId);
-        if (grid) {
+        if (placeholder && placeholder.parentNode) {
           var d = document.createElement('div');
           d.innerHTML = imgThumb(img, type, id, gridId);
-          grid.appendChild(d.firstChild);
+          placeholder.parentNode.replaceChild(d.firstChild, placeholder);
         }
-        input.value = '';
-        if (files.length > 1) handleUpload(input, type, id, gridId);
+        toast('Đã tải: '+file.name, 'ok');
+        uploadFilesSequential(files, index+1, type, id, gridId, done);
       })
-      .withFailureHandler(function(er){ toast(er.message,'err'); })
+      .withFailureHandler(function(er){
+        if (placeholder && placeholder.parentNode) placeholder.remove();
+        toast('Lỗi: '+er.message, 'err');
+        uploadFilesSequential(files, index+1, type, id, gridId, done);
+      })
       .uploadImage(b64, file.type, file.name, type, id, APP.user.name||'', '');
   };
   reader.readAsDataURL(file);
 }
 
+function handleDropFiles(files, type, id, gridId) {
+  var arr = Array.prototype.slice.call(files);
+  if (!arr.length) return;
+  // Nếu grid đang là upload-zone thì đổi thành imgs-grid
+  var grid = document.getElementById(gridId);
+  if (grid && grid.classList.contains('upload-zone')) {
+    grid.className = 'imgs-grid';
+    grid.onclick = null;
+  }
+  uploadFilesSequential(arr, 0, type, id, gridId, null);
+}
+
 function imgThumb(img, type, eid, gridId) {
-  return '<div class="img-th" onclick="window.open(\''+img.drive_url+'\',\'_blank\')"><img src="'+img.drive_url+'" loading="lazy"><button class="img-del" onclick="event.stopPropagation();delImg(\''+img.id+'\',\''+gridId+'\',\''+type+'\',\''+eid+'\')">✕</button></div>';
+  var viewUrl = img.view_url || img.drive_url.replace('thumbnail?id=','file/d/').replace('&sz=w800-h800','/view');
+  return '<div class="img-th">'
+    + '<img src="'+img.drive_url+'" loading="lazy" '
+    + 'onclick="openLightbox(\''+img.drive_url+'\',\''+viewUrl+'\')" '
+    + 'onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">'
+    + '<div class="img-broken" style="display:none" onclick="window.open(\''+viewUrl+'\',\'_blank\')">🖼</div>'
+    + '<button class="img-del" onclick="event.stopPropagation();delImg(\''+img.id+'\',\''+gridId+'\',\''+type+'\',\''+eid+'\')">✕</button>'
+    + '</div>';
+}
+
+function openLightbox(thumbUrl, viewUrl) {
+  var div = document.createElement('div');
+  div.className = 'lb-overlay';
+  div.innerHTML = '<button class="lb-close" id="lb-close-btn">✕</button>'
+    + '<img class="lb-img" src="'+thumbUrl+'" onerror="this.src=\'\'"/>';
+  div.addEventListener('click', function(e){ if(e.target===div) closeLightbox(); });
+  document.body.appendChild(div);
+  document.getElementById('lb-close-btn').addEventListener('click', closeLightbox);
+}
+function closeLightbox() {
+  var lb = document.querySelector('.lb-overlay');
+  if (lb) lb.remove();
 }
 
 function delImg(imgId, gridId, type, eid) {
