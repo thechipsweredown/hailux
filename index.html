@@ -766,39 +766,34 @@ function imgThumb(img, type, eid, gridId) {
 }
 
 // Sau khi render grid, gọi hàm này để load ảnh
-function loadImgBase64(imgId, fileId, viewUrl) {
-  google.script.run
-    .withSuccessHandler(function(dataUrl) {
-      var ph = document.getElementById('iph-'+imgId);
-      if (!ph) return;
-      var parent = ph.parentNode;
-      if (dataUrl) {
-        var imgEl = document.createElement('img');
-        imgEl.src = dataUrl;
-        imgEl.style.cssText = 'width:100%;height:100%;object-fit:cover;cursor:zoom-in';
-        imgEl.addEventListener('click', function(){ openLightbox(dataUrl, viewUrl); });
-        parent.insertBefore(imgEl, ph);
-        ph.remove();
-      } else {
-        ph.innerHTML = '<div class="img-broken" style="display:flex;cursor:pointer" onclick="window.open(\''+viewUrl+'\',\'_blank\')">🖼</div>';
-        ph.className = '';
-        ph.style = '';
-      }
-    })
-    .withFailureHandler(function(){
-      var ph = document.getElementById('iph-'+imgId);
-      if (ph) ph.innerHTML = '🖼';
-    })
-    .getImageAsBase64(fileId);
-}
 
-// Gọi sau khi inject HTML chứa imgThumb
+// Batch: 1 server call cho tất cả ảnh trong grid
 function loadGridImages(images) {
-  images.forEach(function(img) {
-    var fileId  = img.drive_file_id || '';
-    var viewUrl = 'https://drive.google.com/file/d/'+fileId+'/view';
-    loadImgBase64(img.id, fileId, viewUrl);
-  });
+  if (!images || !images.length) return;
+  var fileIds = images.map(function(i){ return i.drive_file_id || ''; });
+  google.script.run
+    .withSuccessHandler(function(dataUrls) {
+      images.forEach(function(img, idx) {
+        var dataUrl = dataUrls[idx];
+        var viewUrl = 'https://drive.google.com/file/d/'+(img.drive_file_id||'')+'/view';
+        var ph = document.getElementById('iph-'+img.id);
+        if (!ph) return;
+        var parent = ph.parentNode;
+        if (dataUrl) {
+          var imgEl = document.createElement('img');
+          imgEl.src = dataUrl;
+          imgEl.style.cssText = 'width:100%;height:100%;object-fit:cover;cursor:zoom-in';
+          imgEl.addEventListener('click', function(){ openLightbox(dataUrl, viewUrl); });
+          parent.insertBefore(imgEl, ph);
+          ph.remove();
+        } else {
+          ph.innerHTML = '<div class="img-broken" style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;cursor:pointer;font-size:1.2rem" onclick="window.open(\''+viewUrl+'\',\'_blank\')">🖼</div>';
+          ph.className = ''; ph.style = '';
+        }
+      });
+    })
+    .withFailureHandler(function(){})
+    .getImagesBase64Batch(fileIds);
 }
 
 function openLightbox(thumbUrl, viewUrl) {

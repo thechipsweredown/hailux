@@ -697,15 +697,22 @@ function getJobWithDetails(jobId) {
   return { ...job, status: jobStatus, tasks: enrichedTasks, images };
 }
 
-// Serve ảnh qua server để tránh Drive cookie issue trong iframe
-function getImageAsBase64(fileId) {
-  try {
-    var file = DriveApp.getFileById(fileId);
-    var blob = file.getBlob();
-    return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
-  } catch(e) {
-    return null;
-  }
+// Batch load thumbnails — 1 server call cho nhiều ảnh, dùng thumbnail nhỏ (~w300)
+function getImagesBase64Batch(fileIds) {
+  var token = ScriptApp.getOAuthToken();
+  return fileIds.map(function(id) {
+    if (!id) return null;
+    try {
+      var url = 'https://drive.google.com/thumbnail?id=' + id + '&sz=w400-h400';
+      var res = UrlFetchApp.fetch(url, {
+        headers: { Authorization: 'Bearer ' + token },
+        muteHttpExceptions: true
+      });
+      if (res.getResponseCode() !== 200) return null;
+      var blob = res.getBlob();
+      return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
+    } catch(e) { return null; }
+  });
 }
 
 function getTaskWithImages(taskId) {
