@@ -382,7 +382,7 @@ function loadDashboard() {
 
 // ---- JOBS ----
 var _jobs = [];
-var _jobSearch = '', _jobStatus = '';
+var _jobSearch = '', _jobStatus = '', _jobCategory = '';
 
 function renderJobs() {
   var el = document.getElementById('pg-jobs');
@@ -395,11 +395,16 @@ function renderJobs() {
       html += '<button class="btn btn-blue" onclick="openJobModal(\'\')">+ Thêm Job</button></div>';
       html += '<div class="card"><div class="card-toolbar">';
       html += '<input style="max-width:280px" placeholder="Tìm mã / tên / khách hàng..." oninput="_jobSearch=this.value;renderJobsTable()" value="'+esc(_jobSearch)+'">';
-      html += '<select style="max-width:180px" onchange="_jobStatus=this.value;renderJobsTable()">';
+      html += '<select style="max-width:160px" onchange="_jobStatus=this.value;renderJobsTable()">';
       html += '<option value="">Tất cả trạng thái</option>';
       jst.forEach(function(s){ html += '<option value="'+s.id+'"'+(s.id===_jobStatus?' selected':'')+'>'+s.label+'</option>'; });
+      html += '</select>';
+      var cats = APP.categories || [];
+      html += '<select style="max-width:150px" onchange="_jobCategory=this.value;renderJobsTable()">';
+      html += '<option value="">Tất cả loại KH</option>';
+      cats.forEach(function(c){ html += '<option value="'+esc(c)+'"'+(_jobCategory===c?' selected':'')+'>'+esc(c)+'</option>'; });
       html += '</select></div>';
-      html += '<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tên SP</th><th>Khách hàng</th><th>Ngày nhận</th><th>Deadline</th><th>Doanh thu</th><th>Tasks</th><th>NV</th><th>Trạng thái</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div></div>';
+      html += '<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tên SP</th><th>Loại KH</th><th>Ngày nhận</th><th>Deadline</th><th>Doanh thu</th><th>Tasks</th><th>NV</th><th>Trạng thái</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div></div>';
       el.innerHTML = html;
       renderJobsTable();
     })
@@ -411,13 +416,14 @@ function renderJobsTable() {
   if (!_jobs) return;
   var q = (_jobSearch||'').toLowerCase();
   var rows = _jobs.filter(function(j) {
-    var ms = !q || (j.code||'').toLowerCase().indexOf(q)>=0 || (j.name||'').toLowerCase().indexOf(q)>=0 || (j.customer_name||'').toLowerCase().indexOf(q)>=0;
-    var mst = !_jobStatus || j.status_id === _jobStatus;
-    return ms && mst;
+    var ms  = !q || (j.code||'').toLowerCase().indexOf(q)>=0 || (j.name||'').toLowerCase().indexOf(q)>=0 || (j.customer_name||'').toLowerCase().indexOf(q)>=0;
+    var mst = !_jobStatus   || j.status_id === _jobStatus;
+    var mct = !_jobCategory || (j.category||'') === _jobCategory;
+    return ms && mst && mct;
   });
   var tbody = document.getElementById('jobs-tbody');
   if (!tbody) return;
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty">Không có job nào</div></td></tr>'; return; }
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty">Không có job nào</div></td></tr>'; return; }
   var html = '';
   rows.forEach(function(j) {
     var st   = APP.st(j.status_id);
@@ -427,7 +433,7 @@ function renderJobsTable() {
     html += '<tr>';
     html += '<td><span style="font-weight:700;color:#1a1a2e;font-size:.88rem">'+esc(j.code||'—')+'</span></td>';
     html += '<td><div style="font-weight:500">'+esc(j.name||'—')+'</div>'+(j.customer_name?'<div style="font-size:.78rem;color:#aaa;margin-top:2px">'+esc(j.customer_name)+'</div>':'')+'</td>';
-    html += '<td style="font-size:.85rem">'+(j.customer_contact?'<div style="color:#555">'+esc(j.customer_contact)+'</div>':'<span style="color:#ccc">—</span>')+'</td>';
+    html += '<td>'+(j.category?'<span style="background:#f0f4ff;color:#4361ee;padding:3px 9px;border-radius:12px;font-size:.78rem;font-weight:500;white-space:nowrap">'+esc(j.category)+'</span>':'<span style="color:#ccc">—</span>')+'</td>';
     html += '<td style="font-size:.83rem;color:#888">'+(j.received_date?fmtDate(j.received_date):'—')+'</td>';
     html += '<td>'+(j.deadline
       ? '<div style="font-size:.85rem;font-weight:'+(over?'700':'500')+';color:'+(over?'#e94560':'#333')+'">'
