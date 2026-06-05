@@ -558,7 +558,6 @@ function openJobDetail(jobId) {
       html += '</div>';
       setModal(html);
       // Load ảnh sau khi DOM sẵn sàng
-      if (job.images && job.images.length) loadGridImages(job.images);
     })
     .withFailureHandler(function(e){ setModal('<p class="empty">Lỗi: '+e.message+'</p>'); })
     .getJobWithDetails(jobId);
@@ -728,7 +727,6 @@ function uploadFilesSequential(files, index, type, id, gridId, done) {
           d.innerHTML = imgThumb(img, type, id, gridId);
           var newEl = d.firstChild;
           placeholder.parentNode.replaceChild(newEl, placeholder);
-          loadGridImages([img]); // load base64 ngay
         }
         toast('Đã tải: '+file.name, 'ok');
         uploadFilesSequential(files, index+1, type, id, gridId, done);
@@ -763,43 +761,14 @@ function imgThumb(img, type, eid, gridId) {
   return '<div class="img-th" id="ith-'+img.id+'">'
     + '<img src="'+cdnUrl+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" '
     + 'onclick="openLightbox(\''+cdnUrl+'\',\''+viewUrl+'\')" '
-    + 'onload="console.log(\'[img] CDN ok: '+fileId+'\')" '
-    + 'onerror="console.log(\'[img] CDN fail, fallback base64: '+fileId+'\');this.style.display=\'none\';this.nextSibling.style.display=\'flex\';loadGridImages([{id:\''+img.id+'\',drive_file_id:\''+fileId+'\'}])">'
-    + '<div id="iph-'+img.id+'" style="display:none;width:100%;height:100%;align-items:center;justify-content:center"><div class="spin"></div></div>'
+    + 'onerror="this.src=\'https://drive.google.com/file/d/'+fileId+'/view\'">'
+    + '<div style="display:none"></div>'
     + '<button class="img-del" onclick="event.stopPropagation();delImg(\''+img.id+'\',\''+gridId+'\',\''+type+'\',\''+eid+'\')">✕</button>'
     + '</div>';
 }
 
 // Sau khi render grid, gọi hàm này để load ảnh
 
-// Batch: 1 server call cho tất cả ảnh trong grid
-function loadGridImages(images) {
-  if (!images || !images.length) return;
-  var fileIds = images.map(function(i){ return i.drive_file_id || ''; });
-  google.script.run
-    .withSuccessHandler(function(dataUrls) {
-      images.forEach(function(img, idx) {
-        var dataUrl = dataUrls[idx];
-        var viewUrl = 'https://drive.google.com/file/d/'+(img.drive_file_id||'')+'/view';
-        var ph = document.getElementById('iph-'+img.id);
-        if (!ph) return;
-        var parent = ph.parentNode;
-        if (dataUrl) {
-          var imgEl = document.createElement('img');
-          imgEl.src = dataUrl;
-          imgEl.style.cssText = 'width:100%;height:100%;object-fit:cover;cursor:zoom-in';
-          imgEl.addEventListener('click', function(){ openLightbox(dataUrl, viewUrl); });
-          parent.insertBefore(imgEl, ph);
-          ph.remove();
-        } else {
-          ph.innerHTML = '<div class="img-broken" style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;cursor:pointer;font-size:1.2rem" onclick="window.open(\''+viewUrl+'\',\'_blank\')">🖼</div>';
-          ph.className = ''; ph.style = '';
-        }
-      });
-    })
-    .withFailureHandler(function(){})
-    .getImagesBase64Batch(fileIds);
-}
 
 function openLightbox(thumbUrl, viewUrl) {
   var div = document.createElement('div');
@@ -845,7 +814,6 @@ function openTaskImgs(taskId, taskName) {
       html += '</div></div>';
       html += '<div class="modal-ft"><button class="btn btn-outline" onclick="closeModal()">Đóng</button></div>';
       setModal(html);
-      if (imgs && imgs.length) loadGridImages(imgs);
     })
     .withFailureHandler(function(e){ setModal('<p class="empty">Lỗi: '+e.message+'</p>'); })
     .getImages('task', taskId);
