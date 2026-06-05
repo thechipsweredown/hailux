@@ -645,7 +645,7 @@ function uploadImage(base64Data, mimeType, filename, entityType, entityId, uploa
 
   const fileId   = file.getId();
   // thumbnail URL hoạt động tốt nhất trong iframe Apps Script
-  const driveUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800-h800`;
+  const driveUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
   const viewUrl  = `https://drive.google.com/file/d/${fileId}/view`;
 
   const sheet = getSheet('Images');

@@ -758,9 +758,13 @@ function handleDropFiles(files, type, id, gridId) {
 function imgThumb(img, type, eid, gridId) {
   var fileId  = img.drive_file_id || '';
   var viewUrl = 'https://drive.google.com/file/d/'+fileId+'/view';
-  // Dùng data-fileid để lazy load base64 qua server
+  // Thử lh3.googleusercontent.com CDN trực tiếp, fallback sang batch base64
+  var cdnUrl  = 'https://lh3.googleusercontent.com/d/'+fileId;
   return '<div class="img-th" id="ith-'+img.id+'">'
-    + '<div class="img-uploading" id="iph-'+img.id+'"><div class="spin"></div></div>'
+    + '<img src="'+cdnUrl+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" '
+    + 'onclick="openLightbox(\''+cdnUrl+'\',\''+viewUrl+'\')" '
+    + 'onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\';loadGridImages([{id:\''+img.id+'\',drive_file_id:\''+fileId+'\'}])">'
+    + '<div id="iph-'+img.id+'" style="display:none;width:100%;height:100%;align-items:center;justify-content:center"><div class="spin"></div></div>'
     + '<button class="img-del" onclick="event.stopPropagation();delImg(\''+img.id+'\',\''+gridId+'\',\''+type+'\',\''+eid+'\')">✕</button>'
     + '</div>';
 }
