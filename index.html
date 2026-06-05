@@ -367,12 +367,12 @@ function renderJobs() {
       html += '<option value="">Tất cả trạng thái</option>';
       jst.forEach(function(s){ html += '<option value="'+s.id+'"'+(s.id===_jobStatus?' selected':'')+'>'+s.label+'</option>'; });
       html += '</select></div>';
-      html += '<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tên SP</th><th>Khách hàng</th><th>Ngày nhận</th><th>Deadline</th><th>Doanh thu</th><th>Trạng thái</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div></div>';
+      html += '<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tên SP</th><th>Khách hàng</th><th>Ngày nhận</th><th>Deadline</th><th>Doanh thu</th><th>Tasks</th><th>NV</th><th>Trạng thái</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div></div>';
       el.innerHTML = html;
       renderJobsTable();
     })
     .withFailureHandler(function(e){ el.innerHTML = '<div style="padding:20px;color:red"><strong>Server Error:</strong> '+e.message+'</div>'; })
-    .getJobs();
+    .getJobsWithStats();
 }
 
 function renderJobsTable() {
@@ -404,6 +404,8 @@ function renderJobsTable() {
         : over ? '<div style="font-size:.75rem;color:#e94560">quá '+Math.abs(daysLeft)+' ngày</div>' : '')
       : '<span style="color:#ccc">—</span>')+'</td>';
     html += '<td><span style="font-family:monospace;font-weight:600;font-size:.88rem">'+(j.revenue?Number(j.revenue).toLocaleString('vi-VN')+'đ':'<span style="color:#ccc">—</span>')+'</span></td>';
+    html += '<td><span style="background:#e8eeff;color:#4361ee;padding:3px 10px;border-radius:12px;font-size:.82rem;font-weight:600">'+(j.task_count||0)+'</span></td>';
+    html += '<td><span style="background:#e8f5e9;color:#388e3c;padding:3px 10px;border-radius:12px;font-size:.82rem;font-weight:600">'+(j.assignee_count||0)+'</span></td>';
     html += '<td>'+(st?'<span class="badge" style="background:'+st.color+'22;color:'+st.color+';border:1px solid '+st.color+'44">'+st.label+'</span>':'<span style="color:#ccc">—</span>')+'</td>';
     html += '<td style="white-space:nowrap">';
     html += '<button class="btn btn-sm" style="background:#f0f4ff;color:#4361ee;border:1px solid #d0d9ff" onclick="openJobDetail(\''+j.id+'\')">Chi tiết</button> ';
