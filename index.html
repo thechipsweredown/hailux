@@ -557,6 +557,8 @@ function openJobDetail(jobId) {
       html += '</div></div>';
       html += '</div>';
       setModal(html);
+      // Load ảnh sau khi DOM sẵn sàng
+      if (job.images && job.images.length) loadGridImages(job.images);
     })
     .withFailureHandler(function(e){ setModal('<p class="empty">Lỗi: '+e.message+'</p>'); })
     .getJobWithDetails(jobId);
@@ -724,7 +726,9 @@ function uploadFilesSequential(files, index, type, id, gridId, done) {
         if (placeholder && placeholder.parentNode) {
           var d = document.createElement('div');
           d.innerHTML = imgThumb(img, type, id, gridId);
-          placeholder.parentNode.replaceChild(d.firstChild, placeholder);
+          var newEl = d.firstChild;
+          placeholder.parentNode.replaceChild(newEl, placeholder);
+          loadGridImages([img]); // load base64 ngay
         }
         toast('Đã tải: '+file.name, 'ok');
         uploadFilesSequential(files, index+1, type, id, gridId, done);
@@ -752,14 +756,49 @@ function handleDropFiles(files, type, id, gridId) {
 }
 
 function imgThumb(img, type, eid, gridId) {
-  var viewUrl = img.view_url || img.drive_url.replace('thumbnail?id=','file/d/').replace('&sz=w800-h800','/view');
-  return '<div class="img-th">'
-    + '<img src="'+img.drive_url+'" loading="lazy" '
-    + 'onclick="openLightbox(\''+img.drive_url+'\',\''+viewUrl+'\')" '
-    + 'onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">'
-    + '<div class="img-broken" style="display:none" onclick="window.open(\''+viewUrl+'\',\'_blank\')">🖼</div>'
+  var fileId  = img.drive_file_id || '';
+  var viewUrl = 'https://drive.google.com/file/d/'+fileId+'/view';
+  // Dùng data-fileid để lazy load base64 qua server
+  return '<div class="img-th" id="ith-'+img.id+'">'
+    + '<div class="img-uploading" id="iph-'+img.id+'"><div class="spin"></div></div>'
     + '<button class="img-del" onclick="event.stopPropagation();delImg(\''+img.id+'\',\''+gridId+'\',\''+type+'\',\''+eid+'\')">✕</button>'
     + '</div>';
+}
+
+// Sau khi render grid, gọi hàm này để load ảnh
+function loadImgBase64(imgId, fileId, viewUrl) {
+  google.script.run
+    .withSuccessHandler(function(dataUrl) {
+      var ph = document.getElementById('iph-'+imgId);
+      if (!ph) return;
+      var parent = ph.parentNode;
+      if (dataUrl) {
+        var imgEl = document.createElement('img');
+        imgEl.src = dataUrl;
+        imgEl.style.cssText = 'width:100%;height:100%;object-fit:cover;cursor:zoom-in';
+        imgEl.addEventListener('click', function(){ openLightbox(dataUrl, viewUrl); });
+        parent.insertBefore(imgEl, ph);
+        ph.remove();
+      } else {
+        ph.innerHTML = '<div class="img-broken" style="display:flex;cursor:pointer" onclick="window.open(\''+viewUrl+'\',\'_blank\')">🖼</div>';
+        ph.className = '';
+        ph.style = '';
+      }
+    })
+    .withFailureHandler(function(){
+      var ph = document.getElementById('iph-'+imgId);
+      if (ph) ph.innerHTML = '🖼';
+    })
+    .getImageAsBase64(fileId);
+}
+
+// Gọi sau khi inject HTML chứa imgThumb
+function loadGridImages(images) {
+  images.forEach(function(img) {
+    var fileId  = img.drive_file_id || '';
+    var viewUrl = 'https://drive.google.com/file/d/'+fileId+'/view';
+    loadImgBase64(img.id, fileId, viewUrl);
+  });
 }
 
 function openLightbox(thumbUrl, viewUrl) {
@@ -806,6 +845,7 @@ function openTaskImgs(taskId, taskName) {
       html += '</div></div>';
       html += '<div class="modal-ft"><button class="btn btn-outline" onclick="closeModal()">Đóng</button></div>';
       setModal(html);
+      if (imgs && imgs.length) loadGridImages(imgs);
     })
     .withFailureHandler(function(e){ setModal('<p class="empty">Lỗi: '+e.message+'</p>'); })
     .getImages('task', taskId);

@@ -697,6 +697,17 @@ function getJobWithDetails(jobId) {
   return { ...job, status: jobStatus, tasks: enrichedTasks, images };
 }
 
+// Serve ảnh qua server để tránh Drive cookie issue trong iframe
+function getImageAsBase64(fileId) {
+  try {
+    var file = DriveApp.getFileById(fileId);
+    var blob = file.getBlob();
+    return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
+  } catch(e) {
+    return null;
+  }
+}
+
 function getTaskWithImages(taskId) {
   var task = getTaskById(taskId);
   var images = getImages('task', taskId);
