@@ -191,6 +191,7 @@ textarea{resize:vertical;min-height:80px}
   <div id="main">
     <div id="pg-dashboard" class="hidden"></div>
     <div id="pg-jobs" class="hidden"></div>
+    <div id="pg-tasks" class="hidden"></div>
     <div id="pg-mytasks" class="hidden"></div>
     <div id="pg-settings" class="hidden"></div>
   </div>
@@ -284,7 +285,7 @@ function enterApp() {
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('sb-name').textContent = APP.user.name;
   var menu = APP.role === 'manager'
-    ? [{id:'dashboard',icon:'📊',lbl:'Dashboard'},{id:'jobs',icon:'👜',lbl:'Công việc'},{id:'settings',icon:'⚙️',lbl:'Cài đặt'}]
+    ? [{id:'dashboard',icon:'📊',lbl:'Dashboard'},{id:'jobs',icon:'👜',lbl:'Công việc'},{id:'tasks',icon:'📋',lbl:'Đầu việc'},{id:'settings',icon:'⚙️',lbl:'Cài đặt'}]
     : [{id:'mytasks',icon:'✅',lbl:'Việc của tôi'}];
   document.getElementById('sb-nav').innerHTML = menu.map(function(m) {
     return '<div class="nav-item" id="nav-'+m.id+'" onclick="goTo(\''+m.id+'\')"><span>'+m.icon+'</span>'+m.lbl+'</div>';
@@ -307,6 +308,7 @@ function goTo(page) {
   var pg = document.getElementById('pg-'+page); if(pg) pg.classList.remove('hidden');
   if (page === 'dashboard') renderDashboard();
   else if (page === 'jobs') renderJobs();
+  else if (page === 'tasks') renderAllTasks();
   else if (page === 'mytasks') renderMyTasks();
   else if (page === 'settings') renderSettings();
 }
@@ -727,6 +729,101 @@ function openTaskImgs(taskId, taskName) {
     })
     .withFailureHandler(function(e){ setModal('<p class="empty">Lỗi: '+e.message+'</p>'); })
     .getImages('task', taskId);
+}
+
+// ---- ALL TASKS (Manager view) ----
+var _taskFilters = { assignee_id:'', deadline_from:'', deadline_to:'' };
+
+function renderAllTasks() {
+  var el = document.getElementById('pg-tasks');
+  var emps = APP.emps();
+
+  // Filter bar
+  var fb = '<div style="background:#fff;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.06)">';
+  fb += '<span style="font-size:.85rem;font-weight:600;color:#555">Lọc:</span>';
+  fb += '<select id="tf-assignee" style="padding:6px 10px;font-size:.83rem;max-width:160px" onchange="_taskFilters.assignee_id=this.value;loadAllTasks()">';
+  fb += '<option value="">Tất cả nhân viên</option>';
+  emps.forEach(function(u){ fb += '<option value="'+u.id+'"'+(_taskFilters.assignee_id===u.id?' selected':'')+'>'+esc(u.name)+'</option>'; });
+  fb += '</select>';
+  fb += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">Deadline từ</label><input type="date" id="tf-from" value="'+_taskFilters.deadline_from+'" style="width:140px;padding:6px 10px;font-size:.83rem" onchange="_taskFilters.deadline_from=this.value;loadAllTasks()"></div>';
+  fb += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">đến</label><input type="date" id="tf-to" value="'+_taskFilters.deadline_to+'" style="width:140px;padding:6px 10px;font-size:.83rem" onchange="_taskFilters.deadline_to=this.value;loadAllTasks()"></div>';
+  if (_taskFilters.assignee_id||_taskFilters.deadline_from||_taskFilters.deadline_to) {
+    fb += '<button class="btn btn-sm btn-ghost" onclick="_taskFilters={assignee_id:\'\',deadline_from:\'\',deadline_to:\'\'};renderAllTasks()">✕ Xoá lọc</button>';
+  }
+  fb += '</div>';
+
+  el.innerHTML = '<div class="page-header"><div><h1>Đầu việc</h1><p class="sub">Tất cả task theo trạng thái</p></div></div>'
+    + fb + '<div id="tasks-content">'+spinner()+'</div>';
+  loadAllTasks();
+}
+
+function loadAllTasks() {
+  var el = document.getElementById('tasks-content');
+  if (el) el.innerHTML = spinner();
+  google.script.run
+    .withSuccessHandler(function(tasks) {
+      var el2 = document.getElementById('tasks-content');
+      if (!el2) return;
+      var tst = APP.stList('task');
+
+      // Group by status
+      var groups = {};
+      tst.forEach(function(s){ groups[s.id] = { status: s, items: [] }; });
+      groups['__none'] = { status: null, items: [] };
+
+      tasks.forEach(function(t){
+        if (groups[t.status_id]) groups[t.status_id].items.push(t);
+        else groups['__none'].items.push(t);
+      });
+
+      // Sort groups: in_progress → ready → todo → pending → done
+      var norm = function(s){ return (s||'').toLowerCase().replace(/\s/g,''); };
+      var order = { 'đanglàm':1, 'chưalàm':2, 'treo':3, 'hoànthanh':4, 'đãxong':4 };
+      var sortedGroups = Object.values(groups)
+        .filter(function(g){ return g.items.length > 0; })
+        .sort(function(a,b){
+          var oa = a.status ? (order[norm(a.status.label)]||5) : 5;
+          var ob = b.status ? (order[norm(b.status.label)]||5) : 5;
+          return oa - ob;
+        });
+
+      if (!sortedGroups.length) { el2.innerHTML = '<div class="empty">Không có task nào</div>'; return; }
+
+      var html = '';
+      sortedGroups.forEach(function(g) {
+        var s = g.status;
+        var color = s ? s.color : '#9E9E9E';
+        html += '<div style="margin-bottom:24px">';
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+        html += '<span style="width:12px;height:12px;border-radius:50%;background:'+color+';display:inline-block"></span>';
+        html += '<strong style="font-size:.95rem">'+(s?s.label:'Không rõ')+'</strong>';
+        html += '<span class="chip">'+g.items.length+'</span></div>';
+
+        // Table
+        html += '<div class="card"><div class="tbl-wrap"><table><thead><tr>';
+        html += '<th>Đầu việc</th><th>Job</th><th>Nhân viên</th><th>Deadline</th><th>Ghi chú</th></tr></thead><tbody>';
+        g.items.forEach(function(t) {
+          var dl = t.effective_deadline;
+          var over = dl && new Date(dl) < new Date() && s && norm(s.label) !== 'hoànthanh' && norm(s.label) !== 'đãxong';
+          var daysLeft = dl ? Math.ceil((new Date(dl)-new Date())/86400000) : null;
+          html += '<tr>';
+          html += '<td><strong>'+esc(t.name||'—')+'</strong></td>';
+          html += '<td><div style="font-size:.85rem;font-weight:500">'+esc(t.job?t.job.code:'—')+'</div><div style="font-size:.78rem;color:#aaa">'+esc(t.job?t.job.name:'')+'</div></td>';
+          html += '<td><span style="font-size:.85rem">'+(t.assignee?esc(t.assignee.name):'<span style="color:#ccc">Chưa phân công</span>')+'</span></td>';
+          html += '<td>'+(dl
+            ? '<div style="font-size:.85rem;font-weight:'+(over?'700':'400')+';color:'+(over?'#e94560':'#333')+'">'+fmtDate(dl)+'</div>'
+              +(over?'<div style="font-size:.75rem;color:#e94560">quá '+Math.abs(daysLeft)+' ngày</div>'
+              : daysLeft!==null && daysLeft<=3 ? '<div style="font-size:.75rem;color:#FF9800">còn '+daysLeft+' ngày</div>' : '')
+            : '<span style="color:#ccc">—</span>')+'</td>';
+          html += '<td style="font-size:.82rem;color:#888;max-width:200px">'+esc(t.notes||'')+'</td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table></div></div></div>';
+      });
+      el2.innerHTML = html;
+    })
+    .withFailureHandler(function(e){ var c=document.getElementById('tasks-content'); if(c) c.innerHTML='<p class="empty">Lỗi: '+e.message+'</p>'; })
+    .getAllTasksWithDetails(_taskFilters);
 }
 
 // ---- MY TASKS ----

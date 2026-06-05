@@ -685,6 +685,41 @@ function getTaskWithImages(taskId) {
   return { task: task, images: images };
 }
 
+function getAllTasksWithDetails(filters) {
+  filters = filters || {};
+  const tasks    = getTasks();
+  const jobs     = getJobs();
+  const users    = getUsers();
+  const statuses = getStatuses();
+  const taskStatuses = statuses.filter(s => s.entity_type === 'task');
+
+  const jobMap  = {};  jobs.forEach(j => jobMap[j.id] = j);
+  const userMap = {};  users.forEach(u => userMap[u.id] = u);
+  const stMap   = {};  taskStatuses.forEach(s => stMap[s.id] = s);
+
+  return tasks
+    .map(t => ({
+      ...t,
+      job:      jobMap[t.job_id]  || null,
+      assignee: userMap[t.assignee_id] || null,
+      status:   stMap[t.status_id]    || null,
+      effective_deadline: t.deadline || (jobMap[t.job_id] ? jobMap[t.job_id].deadline : ''),
+    }))
+    .filter(t => {
+      if (filters.assignee_id && t.assignee_id !== filters.assignee_id) return false;
+      if (filters.deadline_from && t.effective_deadline && t.effective_deadline < filters.deadline_from) return false;
+      if (filters.deadline_to   && t.effective_deadline && t.effective_deadline > filters.deadline_to + 'T23:59:59') return false;
+      return true;
+    })
+    .sort((a, b) => {
+      // Sort: deadline gần nhất lên trước, không có deadline xuống dưới
+      if (!a.effective_deadline && !b.effective_deadline) return 0;
+      if (!a.effective_deadline) return 1;
+      if (!b.effective_deadline) return -1;
+      return a.effective_deadline.localeCompare(b.effective_deadline);
+    });
+}
+
 function getInitialData() {
   const jobs = getJobs();
   const categories = [...new Set(jobs.map(j => j.category).filter(Boolean))].sort();
