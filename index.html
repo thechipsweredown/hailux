@@ -391,7 +391,7 @@ function renderJobs() {
     .withSuccessHandler(function(jobs) {
       _jobs = jobs || []; APP.jobs = _jobs;
       var jst = APP.stList('job');
-      var html = '<div class="page-header"><div><h1>Công việc (Jobs)</h1><p class="sub">Quản lý tất cả job</p></div>';
+      var html = '<div class="page-header"><div><h1>Công việc</h1><p class="sub">Quản lý tất cả job</p></div>';
       html += '<button class="btn btn-blue" onclick="openJobModal(\'\')">+ Thêm Job</button></div>';
       html += '<div class="card"><div class="card-toolbar">';
       html += '<input style="max-width:280px" placeholder="Tìm mã / tên / khách hàng..." oninput="_jobSearch=this.value;renderJobsTable()" value="'+esc(_jobSearch)+'">';
