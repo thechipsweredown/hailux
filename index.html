@@ -547,17 +547,14 @@ function openJobDetail(jobId) {
       jst.forEach(function(s){ html += '<option value="'+s.id+'"'+(job.status_id===s.id?' selected':'')+'>'+s.label+'</option>'; });
       html += '</select></span></div></div></div>';
       if (job.repair_scope) { html += '<div class="detail-box" style="margin-top:12px"><h4>Hạng mục sửa</h4><p style="font-size:.88rem;white-space:pre-line">'+esc(job.repair_scope)+'</p></div>'; }
-      html += '<div style="margin-top:20px">';
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><strong>Hình ảnh Job</strong><button class="btn btn-sm btn-outline" onclick="trigUpload(\'job\',\''+job.id+'\',\'ji-'+job.id+'\')">+ Thêm ảnh</button></div>';
-      html += '<input type="file" id="uf-job-'+job.id+'" accept="image/*" multiple style="display:none" onchange="handleUpload(this,\'job\',\''+job.id+'\',\'ji-'+job.id+'\')">';
-      if ((job.images||[]).length === 0) {
-        html += '<div class="upload-zone" id="ji-'+job.id+'" onclick="trigUpload(\'job\',\''+job.id+'\',\'ji-'+job.id+'\')" ondragover="event.preventDefault();this.classList.add(\'drag-over\')" ondragleave="this.classList.remove(\'drag-over\')" ondrop="event.preventDefault();this.classList.remove(\'drag-over\');handleDropFiles(event.dataTransfer.files,\'job\',\''+job.id+'\',\'ji-'+job.id+'\')">';
-        html += '<div style="font-size:1.5rem;margin-bottom:6px">📷</div><div style="font-size:.85rem">Kéo thả ảnh vào đây hoặc click để chọn</div></div>';
-      } else {
-        html += '<div class="imgs-grid" id="ji-'+job.id+'">';
-        (job.images||[]).forEach(function(img){ html += imgThumb(img,'job',job.id,'ji-'+job.id); });
-        html += '</div>';
+      // Avatar upload (thay ảnh)
+      html += '<div style="margin-top:16px;display:flex;align-items:center;gap:12px">';
+      if (job.avatar_id) {
+        html += '<img src="https://lh3.googleusercontent.com/d/'+job.avatar_id+'" style="width:60px;height:60px;object-fit:cover;border-radius:10px;border:1px solid #eee;cursor:zoom-in" onclick="openLightbox(\'https://lh3.googleusercontent.com/d/'+job.avatar_id+'\',\'https://drive.google.com/file/d/'+job.avatar_id+'/view\')">';
       }
+      html += '<div><div style="font-size:.82rem;color:#888;margin-bottom:4px">Ảnh đại diện</div>';
+      html += '<button class="btn btn-sm btn-outline" onclick="document.getElementById(\'av-'+job.id+'\').click()">📷 '+(job.avatar_id?'Đổi ảnh':'Tải ảnh lên')+'</button>';
+      html += '<input type="file" id="av-'+job.id+'" accept="image/*" style="display:none" onchange="uploadAvatar(this,\''+job.id+'\')"></div>';
       html += '</div>';
       html += '<div style="margin-top:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><strong>Luồng Task</strong></div>';
       html += renderDAG(job.tasks, tst);
@@ -629,7 +626,6 @@ function renderTasksHtml(tasks, tst, job) {
     html += '<div class="task-meta">'+esc(asgn?asgn.name:'Chưa phân công')+' · '+(dl?fmtDate(dl):'Theo job')+(t.notes?' · '+esc(t.notes):'')+'</div></div>';
     html += '<div class="task-acts">';
     html += (st?'<span class="badge" style="background:'+st.color+'22;color:'+st.color+'">'+st.label+'</span>':'');
-    html += ' <button class="btn btn-sm btn-outline" onclick="openTaskImgs(\''+t.id+'\',\''+esc(t.name)+'\')">Ảnh '+(t.images?t.images.length:0)+'</button>';
     html += ' <button class="btn btn-sm btn-outline" onclick="openEditTask(\''+t.id+'\',\''+job.id+'\')">Sửa</button>';
     html += ' <button class="btn btn-sm btn-ghost" onclick="delTask(\''+t.id+'\',\''+job.id+'\')">Xóa</button>';
     html += '</div></div>';
@@ -748,6 +744,30 @@ function uploadFilesSequential(files, index, type, id, gridId, done) {
         uploadFilesSequential(files, index+1, type, id, gridId, done);
       })
       .uploadImage(b64, file.type, file.name, type, id, APP.user.name||'', '');
+  };
+  reader.readAsDataURL(file);
+}
+
+function uploadAvatar(input, jobId) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var b64 = e.target.result.split(',')[1];
+    toast('Đang tải ảnh...');
+    google.script.run
+      .withSuccessHandler(function(result) {
+        toast('Đã cập nhật ảnh', 'ok');
+        // Cập nhật avatar trên tất cả nơi hiển thị
+        var imgs = document.querySelectorAll('[src*="'+( result.drive_file_id || '')+'"], img[src*="lh3"]');
+        var newUrl = result.cdn_url;
+        // reload job detail
+        closeModal();
+        openJobDetail(jobId);
+        renderJobs();
+      })
+      .withFailureHandler(function(e){ toast(e.message,'err'); })
+      .uploadJobAvatar(b64, file.type, file.name, jobId, APP.user ? APP.user.name : '');
   };
   reader.readAsDataURL(file);
 }

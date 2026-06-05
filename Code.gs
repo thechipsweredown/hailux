@@ -26,7 +26,6 @@ function setupSheets() {
     Users:         ['id','name','role','email','created_at'],
     Jobs:          ['id','code','name','category','customer_name','customer_contact','received_date','deadline','revenue','repair_scope','status_id','notes','created_at','avatar_id'],
     Tasks:         ['id','job_id','name','order','assignee_id','deadline','status_id','completed_at','notes','created_at'],
-    Images:        ['id','entity_type','entity_id','drive_file_id','drive_url','uploaded_by','uploaded_at','caption'],
     Statuses:      ['id','entity_type','label','color','order'],
     TaskTemplates: ['id','name','description'],
     Settings:      ['key','value'],
@@ -92,8 +91,15 @@ function genId() {
 
 function getSheet(name) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ss) throw new Error('Không tìm thấy Spreadsheet. Script cần được gắn vào Google Sheet.');
+  if (!ss) throw new Error('Script chưa được gắn vào Google Sheet.');
   return ss.getSheetByName(name);
+}
+
+// Dùng cho write operations — throw nếu sheet không tồn tại
+function requireSheet(name) {
+  const sheet = getSheet(name);
+  if (!sheet) throw new Error('Sheet "' + name + '" không tồn tại. Vui lòng chạy setupSheets() trước.');
+  return sheet;
 }
 
 function sheetToObjects(sheet) {
@@ -149,7 +155,7 @@ function cleanEmptyTasks() {
 
 function debugAll() {
   var results = {};
-  var sheets = ['Users','Jobs','Tasks','Statuses','TaskTemplates','Settings','Images'];
+  var sheets = ['Users','Jobs','Tasks','Statuses','TaskTemplates','Settings'];
   sheets.forEach(function(name) {
     try {
       var sheet = getSheet(name);
@@ -338,7 +344,6 @@ function deleteJob(id) {
   // also delete tasks and images
   const tasks = getTasks().filter(t => t.job_id === id);
   tasks.forEach(t => deleteTask(t.id));
-  deleteImagesForEntity('job', id);
   return true;
 }
 
@@ -418,7 +423,6 @@ function deleteTask(id) {
   const sheet = getSheet('Tasks');
   const row = findRowById(sheet, id);
   if (row !== -1) sheet.deleteRow(row);
-  deleteImagesForEntity('task', id);
   return true;
 }
 
@@ -617,69 +621,27 @@ function getDashboardStats(filters) {
 }
 
 // ============================================================
-// IMAGES API
+// IMAGES API — chỉ lưu avatar trên cột Jobs.avatar_id
 // ============================================================
 
-function getImages(entityType, entityId) {
-  return sheetToObjects(getSheet('Images'))
-    .filter(img => img.entity_type === entityType && img.entity_id === entityId);
-}
-
-function uploadImage(base64Data, mimeType, filename, entityType, entityId, uploadedBy, caption) {
+function uploadJobAvatar(base64Data, mimeType, filename, jobId, uploadedBy) {
   const settings = getSettings();
   const folderSetting = settings.find(s => s.key === 'drive_folder_id');
-
   let folder;
   if (folderSetting && folderSetting.value) {
-    folder = DriveApp.getFolderById(folderSetting.value);
-  } else {
-    // create default folder
+    try { folder = DriveApp.getFolderById(folderSetting.value); } catch(e) {}
+  }
+  if (!folder) {
     const folders = DriveApp.getFoldersByName('HaiLux_Images');
     folder = folders.hasNext() ? folders.next() : DriveApp.createFolder('HaiLux_Images');
     updateSetting('drive_folder_id', folder.getId());
   }
-
   const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, filename);
   const file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-  const fileId   = file.getId();
-  // thumbnail URL hoạt động tốt nhất trong iframe Apps Script
-  const driveUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
-  const viewUrl  = `https://drive.google.com/file/d/${fileId}/view`;
-
-  const sheet = getSheet('Images');
-  const id = genId();
-  const now = new Date().toISOString();
-  sheet.appendRow([id, entityType, entityId, fileId, driveUrl, uploadedBy, now, caption || '']);
-
-  // Nếu là ảnh job và job chưa có avatar → set luôn
-  if (entityType === 'job') {
-    const job = getJob(entityId);
-    if (job && !job.avatar_id) {
-      updateJob(entityId, { avatar_id: fileId });
-    }
-  }
-
-  return { id, entity_type: entityType, entity_id: entityId, drive_file_id: fileId, drive_url: driveUrl, view_url: viewUrl, uploaded_by: uploadedBy, uploaded_at: now, caption };
-}
-
-function deleteImage(id) {
-  const images = sheetToObjects(getSheet('Images'));
-  const img = images.find(i => i.id === id);
-  if (img) {
-    try { DriveApp.getFileById(img.drive_file_id).setTrashed(true); } catch(e) {}
-    const sheet = getSheet('Images');
-    const row = findRowById(sheet, id);
-    if (row !== -1) sheet.deleteRow(row);
-  }
-  return true;
-}
-
-function deleteImagesForEntity(entityType, entityId) {
-  const images = sheetToObjects(getSheet('Images'))
-    .filter(i => i.entity_type === entityType && i.entity_id === entityId);
-  images.forEach(i => deleteImage(i.id));
+  const fileId = file.getId();
+  updateJob(jobId, { avatar_id: fileId });
+  return { drive_file_id: fileId, cdn_url: 'https://lh3.googleusercontent.com/d/' + fileId };
 }
 
 // ============================================================
@@ -689,44 +651,20 @@ function deleteImagesForEntity(entityType, entityId) {
 function getJobWithDetails(jobId) {
   const job = getJob(jobId);
   if (!job) return null;
-  const tasks = getTasksByJob(jobId);
-  const images = getImages('job', jobId);
-  const users = getUsers();
+  const tasks    = getTasksByJob(jobId);
+  const users    = getUsers();
   const statuses = getStatuses();
-
   const enrichedTasks = tasks.map(t => {
-    const taskImages = getImages('task', t.id);
     const assignee = users.find(u => u.id === t.assignee_id);
-    const status = statuses.find(s => s.id === t.status_id);
-    return { ...t, assignee, status, images: taskImages };
+    const status   = statuses.find(s => s.id === t.status_id);
+    return { ...t, assignee, status };
   });
-
   const jobStatus = statuses.find(s => s.id === job.status_id);
-  return { ...job, status: jobStatus, tasks: enrichedTasks, images };
-}
-
-// Batch load thumbnails — 1 server call cho nhiều ảnh, dùng thumbnail nhỏ (~w300)
-function getImagesBase64Batch(fileIds) {
-  var token = ScriptApp.getOAuthToken();
-  return fileIds.map(function(id) {
-    if (!id) return null;
-    try {
-      var url = 'https://drive.google.com/thumbnail?id=' + id + '&sz=w400-h400';
-      var res = UrlFetchApp.fetch(url, {
-        headers: { Authorization: 'Bearer ' + token },
-        muteHttpExceptions: true
-      });
-      if (res.getResponseCode() !== 200) return null;
-      var blob = res.getBlob();
-      return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
-    } catch(e) { return null; }
-  });
+  return { ...job, status: jobStatus, tasks: enrichedTasks };
 }
 
 function getTaskWithImages(taskId) {
-  var task = getTaskById(taskId);
-  var images = getImages('task', taskId);
-  return { task: task, images: images };
+  return { task: getTaskById(taskId), images: [] };
 }
 
 function getAllTasksWithDetails(filters) {
