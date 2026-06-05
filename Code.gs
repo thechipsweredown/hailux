@@ -132,6 +132,21 @@ function verifyManagerPassword(password) {
   return entry && String(entry.value) === String(password);
 }
 
+function cleanEmptyTasks() {
+  const sheet = getSheet('Tasks');
+  const data  = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const nameCol = headers.indexOf('name');
+  var deleted = 0;
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (!data[i][nameCol] || !String(data[i][nameCol]).trim()) {
+      sheet.deleteRow(i + 1);
+      deleted++;
+    }
+  }
+  return 'Đã xóa ' + deleted + ' task rỗng';
+}
+
 function debugAll() {
   var results = {};
   var sheets = ['Users','Jobs','Tasks','Statuses','TaskTemplates','Settings','Images'];
@@ -477,7 +492,7 @@ function getEnrichedTasksForAssignee(assigneeId) {
     arr.sort((a, b) => Number(a.order) - Number(b.order))
   );
 
-  const myTasks = allTasks.filter(t => t.assignee_id === assigneeId);
+  const myTasks = allTasks.filter(t => t.assignee_id === assigneeId && t.name && String(t.name).trim());
 
   return myTasks.map(task => {
     const jobTasks = tasksByJob[task.job_id] || [];
@@ -706,7 +721,8 @@ function getAllTasksWithDetails(filters) {
       effective_deadline: t.deadline || (jobMap[t.job_id] ? jobMap[t.job_id].deadline : ''),
     }))
     .filter(t => {
-      if (!t.job) return false; // bỏ qua task không có job
+      if (!t.job) return false;
+      if (!t.name || !String(t.name).trim()) return false; // bỏ data rác
       if (filters.assignee_id && t.assignee_id !== filters.assignee_id) return false;
       if (filters.status_id   && t.status_id   !== filters.status_id)   return false;
       if (filters.deadline_from && t.effective_deadline && t.effective_deadline < filters.deadline_from) return false;
