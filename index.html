@@ -446,8 +446,8 @@ function renderJobsTable() {
     var daysLeft = j.deadline ? Math.ceil((new Date(j.deadline)-new Date())/86400000) : null;
     html += '<tr>';
     html += '<td><span style="font-weight:700;color:#1a1a2e;font-size:.88rem">'+esc(j.code||'—')+'</span></td>';
-    var thumbHtml = j.first_image_id
-      ? '<img class="job-thumb" src="https://lh3.googleusercontent.com/d/'+j.first_image_id+'" onclick="event.stopPropagation();openLightbox(\'https://lh3.googleusercontent.com/d/'+j.first_image_id+'\',\'https://drive.google.com/file/d/'+j.first_image_id+'/view\')">'
+    var thumbHtml = j.avatar_id
+      ? '<img class="job-thumb" src="https://lh3.googleusercontent.com/d/'+j.avatar_id+'" onclick="event.stopPropagation();openLightbox(\'https://lh3.googleusercontent.com/d/'+j.avatar_id+'\',\'https://drive.google.com/file/d/'+j.avatar_id+'/view\')">'
       : '<div class="job-thumb-ph">📦</div>';
     html += '<td><div style="display:flex;align-items:center;gap:10px">'+thumbHtml+'<div><div style="font-weight:500">'+esc(j.name||'—')+'</div>'+(j.customer_name?'<div style="font-size:.78rem;color:#aaa;margin-top:2px">'+esc(j.customer_name)+'</div>':'')+'</div></div></td>';
     html += '<td>'+(j.category?'<span style="background:#f0f4ff;color:#4361ee;padding:3px 9px;border-radius:12px;font-size:.78rem;font-weight:500;white-space:nowrap">'+esc(j.category)+'</span>':'<span style="color:#ccc">—</span>')+'</td>';
@@ -525,7 +525,13 @@ function openJobDetail(jobId) {
       var jst = APP.stList('job');
       var tst = APP.stList('task');
       var over = job.deadline && new Date(job.deadline)<new Date() && job.status && job.status.label!=='Hoàn thành';
-      var html = '<div class="modal-hd"><h3>'+esc(job.code)+' — '+esc(job.name)+'</h3><button class="btn-x" onclick="closeModal()">✕</button></div>';
+      var avatarId = job.avatar_id || '';
+      var avatarHtml = avatarId
+        ? '<img src="https://lh3.googleusercontent.com/d/'+avatarId+'" style="width:80px;height:80px;object-fit:cover;border-radius:12px;border:1px solid #eee;cursor:zoom-in;flex-shrink:0" onclick="openLightbox(\'https://lh3.googleusercontent.com/d/'+avatarId+'\',\'https://drive.google.com/file/d/'+avatarId+'/view\')">'
+        : '<div style="width:80px;height:80px;border-radius:12px;background:#f0f2f5;display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0">📦</div>';
+      var html = '<div class="modal-hd">'
+        + '<div style="display:flex;align-items:center;gap:12px">'+avatarHtml+'<div><h3 style="margin:0">'+esc(job.code)+' — '+esc(job.name)+'</h3><p style="font-size:.82rem;color:#aaa;margin-top:4px">'+esc(job.category||'')+'</p></div></div>'
+        + '<button class="btn-x" onclick="closeModal()">✕</button></div>';
       html += '<div class="modal-bd">';
       html += '<div class="detail-grid">';
       html += '<div class="detail-box"><h4>Thông tin</h4>';

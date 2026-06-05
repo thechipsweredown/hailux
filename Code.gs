@@ -24,7 +24,7 @@ function setupSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const schemas = {
     Users:         ['id','name','role','email','created_at'],
-    Jobs:          ['id','code','name','category','customer_name','customer_contact','received_date','deadline','revenue','repair_scope','status_id','notes','created_at'],
+    Jobs:          ['id','code','name','category','customer_name','customer_contact','received_date','deadline','revenue','repair_scope','status_id','notes','created_at','avatar_id'],
     Tasks:         ['id','job_id','name','order','assignee_id','deadline','status_id','completed_at','notes','created_at'],
     Images:        ['id','entity_type','entity_id','drive_file_id','drive_url','uploaded_by','uploaded_at','caption'],
     Statuses:      ['id','entity_type','label','color','order'],
@@ -287,27 +287,12 @@ function getJob(id) {
 }
 
 function getJobsWithStats() {
-  const jobs   = getJobs();
-  const tasks  = getTasks();
-  const images = sheetToObjects(getSheet('Images'));
-
-  // index ảnh theo job
-  const imgByJob = {};
-  images.forEach(img => {
-    if (img.entity_type === 'job' && !imgByJob[img.entity_id]) {
-      imgByJob[img.entity_id] = img.drive_file_id;
-    }
-  });
-
+  const jobs  = getJobs();
+  const tasks = getTasks();
   return jobs.map(j => {
     const jobTasks  = tasks.filter(t => t.job_id === j.id);
     const assignees = [...new Set(jobTasks.map(t => t.assignee_id).filter(Boolean))];
-    return {
-      ...j,
-      task_count:     jobTasks.length,
-      assignee_count: assignees.length,
-      first_image_id: imgByJob[j.id] || null,
-    };
+    return { ...j, task_count: jobTasks.length, assignee_count: assignees.length };
   });
 }
 
@@ -667,6 +652,14 @@ function uploadImage(base64Data, mimeType, filename, entityType, entityId, uploa
   const id = genId();
   const now = new Date().toISOString();
   sheet.appendRow([id, entityType, entityId, fileId, driveUrl, uploadedBy, now, caption || '']);
+
+  // Nếu là ảnh job và job chưa có avatar → set luôn
+  if (entityType === 'job') {
+    const job = getJob(entityId);
+    if (job && !job.avatar_id) {
+      updateJob(entityId, { avatar_id: fileId });
+    }
+  }
 
   return { id, entity_type: entityType, entity_id: entityId, drive_file_id: fileId, drive_url: driveUrl, view_url: viewUrl, uploaded_by: uploadedBy, uploaded_at: now, caption };
 }
