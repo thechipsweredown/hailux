@@ -25,7 +25,7 @@ function setupSheets() {
   const schemas = {
     Users:         ['id','name','role','email','created_at'],
     Jobs:          ['id','code','name','category','customer_name','customer_contact','received_date','deadline','revenue','repair_scope','status_id','notes','created_at','avatar_id'],
-    Tasks:         ['id','job_id','name','order','assignee_id','deadline','status_id','completed_at','notes','created_at','evidence_ids'],
+    Tasks:         ['id','job_id','name','order','assignee_id','deadline','status_id','completed_at','notes','created_at','evidence_id'],
     Statuses:      ['id','entity_type','label','color','order'],
     TaskTemplates: ['id','name','description'],
     Settings:      ['key','value'],
@@ -680,11 +680,11 @@ function uploadTaskEvidence(base64Data, mimeType, filename, taskId, uploadedBy) 
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   const fileId = file.getId();
 
-  // Append vào evidence_ids
+  // Append vào evidence_id
   const task = getTaskById(taskId);
-  const existing = (task && task.evidence_ids) ? String(task.evidence_ids).split(',').filter(Boolean) : [];
+  const existing = (task && task.evidence_id) ? String(task.evidence_id).split(',').filter(Boolean) : [];
   existing.push(fileId);
-  updateTask(taskId, { evidence_ids: existing.join(','), job_id: task ? task.job_id : '' });
+  updateTask(taskId, { evidence_id: existing.join(','), job_id: task ? task.job_id : '' });
 
   return { drive_file_id: fileId, cdn_url: 'https://lh3.googleusercontent.com/d/' + fileId };
 }
@@ -692,15 +692,15 @@ function uploadTaskEvidence(base64Data, mimeType, filename, taskId, uploadedBy) 
 function deleteTaskEvidence(taskId, fileId) {
   const task = getTaskById(taskId);
   if (!task) return false;
-  const ids = String(task.evidence_ids || '').split(',').filter(id => id && id !== fileId);
-  updateTask(taskId, { evidence_ids: ids.join(','), job_id: task.job_id });
+  const ids = String(task.evidence_id || '').split(',').filter(id => id && id !== fileId);
+  updateTask(taskId, { evidence_id: ids.join(','), job_id: task.job_id });
   try { DriveApp.getFileById(fileId).setTrashed(true); } catch(e) {}
   return true;
 }
 
 function getTaskWithImages(taskId) {
   const task = getTaskById(taskId);
-  const ids = task && task.evidence_ids ? String(task.evidence_ids).split(',').filter(Boolean) : [];
+  const ids = task && task.evidence_id ? String(task.evidence_id).split(',').filter(Boolean) : [];
   const images = ids.map(id => ({ drive_file_id: id, cdn_url: 'https://lh3.googleusercontent.com/d/' + id }));
   return { task: task, images: images };
 }
