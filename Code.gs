@@ -624,6 +624,25 @@ function getDashboardStats(filters) {
 // IMAGES API — chỉ lưu avatar trên cột Jobs.avatar_id
 // ============================================================
 
+// Upload ảnh lên Drive, trả về file_id — không cần jobId
+function uploadJobAvatarOnly(base64Data, mimeType, filename, uploadedBy) {
+  const settings = getSettings();
+  const folderSetting = settings.find(s => s.key === 'drive_folder_id');
+  let folder;
+  if (folderSetting && folderSetting.value) {
+    try { folder = DriveApp.getFolderById(folderSetting.value); } catch(e) {}
+  }
+  if (!folder) {
+    const folders = DriveApp.getFoldersByName('HaiLux_Images');
+    folder = folders.hasNext() ? folders.next() : DriveApp.createFolder('HaiLux_Images');
+    updateSetting('drive_folder_id', folder.getId());
+  }
+  const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, filename);
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return { drive_file_id: file.getId() };
+}
+
 function uploadJobAvatar(base64Data, mimeType, filename, jobId, uploadedBy) {
   const settings = getSettings();
   const folderSetting = settings.find(s => s.key === 'drive_folder_id');
