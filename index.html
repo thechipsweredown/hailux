@@ -488,7 +488,19 @@ function openJobModal(jobId) {
   html += '<div class="row2"><div class="fg"><label>Trạng thái</label><select id="f-st">';
   jst.forEach(function(s){ html += '<option value="'+s.id+'"'+(job&&job.status_id===s.id?' selected':'')+'>'+s.label+'</option>'; });
   html += '</select></div><div class="fg"><label>Ghi chú</label><input id="f-notes" value="'+esc(job&&job.notes||'')+'"></div></div>';
-  html += '</div><div class="modal-ft"><button class="btn btn-outline" onclick="closeModal()">Hủy</button><button class="btn btn-blue" onclick="saveJob(\''+esc(jobId||'')+'\')">Lưu</button></div>';
+  // Avatar upload
+  html += '<div class="row2 row1"><div class="fg"><label>Ảnh đại diện</label>';
+  html += '<div style="display:flex;align-items:center;gap:12px;margin-top:4px">';
+  if (job && job.avatar_id) {
+    html += '<img id="f-avt-preview" src="https://lh3.googleusercontent.com/d/'+job.avatar_id+'" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid #eee">';
+  } else {
+    html += '<div id="f-avt-preview" style="width:56px;height:56px;border-radius:8px;background:#f0f2f5;display:flex;align-items:center;justify-content:center;font-size:1.4rem">📦</div>';
+  }
+  html += '<div><button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById(\'f-avt-input\').click()">📷 Chọn ảnh</button>';
+  html += '<input type="file" id="f-avt-input" accept="image/*" style="display:none" onchange="previewAvatar(this)">';
+  html += '<div id="f-avt-name" style="font-size:.78rem;color:#aaa;margin-top:4px"></div></div></div>';
+  html += '</div></div>';
+  html += '</div><div class="modal-ft"><button class="btn btn-outline" onclick="closeModal()">Hủy</button><button id="btn-save-job" class="btn btn-blue" onclick="saveJob(\''+esc(jobId||'')+'\')">Lưu</button></div>';
   showModal(html);
 }
 
@@ -501,12 +513,52 @@ function saveJob(jobId) {
     status_id: gv('f-st'), notes: gv('f-notes')
   };
   if (!data.code || !data.name) { toast('Vui lòng nhập mã và tên sản phẩm','err'); return; }
-  var fn = jobId ? 'updateJob' : 'createJob';
-  var args = jobId ? [jobId, data] : [data];
-  var runner = google.script.run
-    .withSuccessHandler(function() { toast(jobId?'Đã cập nhật':'Đã tạo job','ok'); closeModal(); renderJobs(); })
-    .withFailureHandler(function(e){ toast(e.message,'err'); });
-  runner[fn].apply(runner, args);
+  var btn = document.getElementById('btn-save-job');
+  if (btn) { btn.disabled = true; btn.textContent = 'Đang lưu...'; }
+
+  function doSave(avatarId) {
+    if (avatarId) data.avatar_id = avatarId;
+    var fn   = jobId ? 'updateJob' : 'createJob';
+    var args = jobId ? [jobId, data] : [data];
+    google.script.run
+      .withSuccessHandler(function() { _pendingAvatarFile=null; toast(jobId?'Đã cập nhật':'Đã tạo job','ok'); closeModal(); renderJobs(); })
+      .withFailureHandler(function(e){ if(btn){btn.disabled=false;btn.textContent='Lưu';} toast(e.message,'err'); })
+    [fn].apply(google.script.run, args);
+  }
+
+  if (_pendingAvatarFile && jobId) {
+    // Job đã có ID → upload avatar rồi lưu
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var b64 = e.target.result.split(',')[1];
+      google.script.run
+        .withSuccessHandler(function(res) { doSave(res.drive_file_id); })
+        .withFailureHandler(function(){ doSave(null); })
+        .uploadJobAvatar(b64, _pendingAvatarFile.type, _pendingAvatarFile.name, jobId, APP.user?APP.user.name:'');
+    };
+    reader.readAsDataURL(_pendingAvatarFile);
+  } else if (_pendingAvatarFile && !jobId) {
+    // Job mới → tạo job trước, rồi upload avatar
+    var file = _pendingAvatarFile;
+    google.script.run
+      .withSuccessHandler(function(newJob) {
+        _pendingAvatarFile = null;
+        toast('Đã tạo job','ok');
+        closeModal();
+        renderJobs();
+        // upload avatar nền
+        var r2 = new FileReader();
+        r2.onload = function(e2) {
+          var b64 = e2.target.result.split(',')[1];
+          google.script.run.uploadJobAvatar(b64, file.type, file.name, newJob.id, APP.user?APP.user.name:'');
+        };
+        r2.readAsDataURL(file);
+      })
+      .withFailureHandler(function(e){ if(btn){btn.disabled=false;btn.textContent='Lưu';} toast(e.message,'err'); })
+      .createJob(data);
+  } else {
+    doSave(null);
+  }
 }
 
 function delJob(id) {
@@ -790,6 +842,21 @@ function delEvidence(taskId, fileId, gridId) {
     })
     .withFailureHandler(function(e){ toast(e.message,'err'); })
     .deleteTaskEvidence(taskId, fileId);
+}
+
+var _pendingAvatarFile = null;
+
+function previewAvatar(input) {
+  var file = input.files[0];
+  if (!file) return;
+  _pendingAvatarFile = file;
+  document.getElementById('f-avt-name').textContent = file.name;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var prev = document.getElementById('f-avt-preview');
+    if (prev) { prev.outerHTML = '<img id="f-avt-preview" src="'+e.target.result+'" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid #eee">'; }
+  };
+  reader.readAsDataURL(file);
 }
 
 function uploadAvatar(input, jobId) {
