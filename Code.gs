@@ -149,6 +149,48 @@ function verifyManagerPassword(password) {
   return entry && String(entry.value) === String(password);
 }
 
+// Thêm cột mới vào sheet đã có, không xóa dữ liệu
+function migrateSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Thêm cột vào sheet đã có nếu thiếu
+  const migrations = {
+    'Jobs':  ['avatar_id'],
+    'Tasks': ['evidence_id', 'emp_notes'],
+  };
+
+  Object.entries(migrations).forEach(([name, cols]) => {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet) return;
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    cols.forEach(col => {
+      if (!headers.includes(col)) {
+        const nextCol = sheet.getLastColumn() + 1;
+        sheet.getRange(1, nextCol).setValue(col);
+        sheet.getRange(1, nextCol).setBackground('#0d1b4b').setFontColor('#fff').setFontWeight('bold');
+        Logger.log('Added column: ' + col + ' to ' + name);
+      } else {
+        Logger.log('Column already exists: ' + col + ' in ' + name);
+      }
+    });
+  });
+
+  // Thêm setting wholesale_password nếu chưa có
+  const settingsSheet = ss.getSheetByName('Settings');
+  if (settingsSheet) {
+    const data = settingsSheet.getDataRange().getValues();
+    const keys = data.map(r => r[0]);
+    if (!keys.includes('wholesale_password')) {
+      settingsSheet.appendRow(['wholesale_password', '0000']);
+      Logger.log('Added wholesale_password setting');
+    } else {
+      Logger.log('wholesale_password already exists');
+    }
+  }
+
+  return 'Migration hoàn tất! Xem Nhật ký thực thi để biết chi tiết.';
+}
+
 function cleanEmptyTasks() {
   const sheet = getSheet('Tasks');
   const data  = sheet.getDataRange().getValues();
