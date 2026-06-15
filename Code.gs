@@ -458,6 +458,8 @@ function updateTask(id, data) {
   }
 
   Object.keys(data).forEach(key => {
+    // Không ghi đè job_id/assignee_id bằng giá trị rỗng
+    if ((key === 'job_id' || key === 'assignee_id') && !data[key]) return;
     const col = headers.indexOf(key) + 1;
     if (col > 0) sheet.getRange(row, col).setValue(data[key]);
   });
@@ -821,7 +823,6 @@ function getAllTasksWithDetails(filters) {
       effective_deadline: t.deadline || (jobMap[t.job_id] ? jobMap[t.job_id].deadline : ''),
     }))
     .filter(t => {
-      if (!t.job) return false;
       if (!t.name || !String(t.name).trim()) return false; // bỏ data rác
       if (filters.assignee_id && t.assignee_id !== filters.assignee_id) return false;
       if (filters.status_id   && t.status_id   !== filters.status_id)   return false;
