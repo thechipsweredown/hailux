@@ -1361,7 +1361,7 @@ function openEmpTask(taskId) {
       html += '<div class="modal-ft" style="justify-content:space-between"><button class="btn btn-outline" onclick="closeModal()">Đóng</button><div style="display:flex;gap:8px">';
       // Nút đổi trạng thái — disable nếu chưa có ảnh
       if (ipS && !isIP && !isDone) {
-        html += '<button id="btn-start-'+taskId+'" class="btn btn-outline" style="border-color:#FF9800;color:#FF9800'+(hasEvidence?'':';opacity:.4;cursor:not-allowed')+'" onclick="'+(hasEvidence?'empUpdStatusBtn(this,\''+taskId+'\',\''+ipS.id+'\',\''+t.job_id+'\')':'toast(\'Vui lòng tải ảnh tình trạng trước\',\'err\')')+'" >▶ Bắt đầu</button>';
+        html += '<button id="btn-start-'+taskId+'" class="btn btn-outline" style="border-color:#FF9800;color:#FF9800" onclick="empUpdStatusBtn(this,\''+taskId+'\',\''+ipS.id+'\',\''+t.job_id+'\')">▶ Bắt đầu</button>';
       }
       if (doneS && !isDone) {
         html += '<button id="btn-done-'+taskId+'" class="btn btn-green" style="'+(hasEvidence?'':'opacity:.4;cursor:not-allowed;')+'" onclick="'+(hasEvidence?'empUpdStatusBtn(this,\''+taskId+'\',\''+doneS.id+'\',\''+t.job_id+'\')':'toast(\'Vui lòng tải ảnh tình trạng trước\',\'err\')')+'" >✓ Hoàn thành</button>';
