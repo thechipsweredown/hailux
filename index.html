@@ -1412,12 +1412,11 @@ function openEmpJobView(jobId) {
 }
 
 function empUpdStatus(taskId, statusId, jobId, btn) {
-  gsRun(btn||null, 'updateTask', [{status_id:statusId, job_id:jobId, id:taskId}, taskId],
+  gsRun(btn||null, 'updateTask', [taskId, {status_id:statusId, job_id:jobId}],
     function(){ toast('Đã cập nhật','ok'); closeModal(); renderMyTasks(); });
 }
-// Overload cho onclick inline: empUpdStatusBtn(this, taskId, statusId, jobId)
 function empUpdStatusBtn(btn, taskId, statusId, jobId) {
-  gsRun(btn, 'updateTask', [{status_id:statusId, job_id:jobId}, taskId],
+  gsRun(btn, 'updateTask', [taskId, {status_id:statusId, job_id:jobId}],
     function(){ toast('Đã cập nhật','ok'); closeModal(); renderMyTasks(); });
 }
 
