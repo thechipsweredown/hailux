@@ -655,7 +655,9 @@ function renderTasksHtml(tasks, tst, job) {
     html += '<div class="task-item">';
     html += '<div class="task-num">'+(t.order||i+1)+'</div>';
     html += '<div class="task-info"><div class="task-name">'+esc(t.name||'—')+'</div>';
-    html += '<div class="task-meta">'+esc(asgn?asgn.name:'Chưa phân công')+' · '+(dl?fmtDate(dl):'Theo job')+(t.notes?' · '+esc(t.notes):'')+'</div></div>';
+    html += '<div class="task-meta">'+esc(asgn?asgn.name:'Chưa phân công')+' · '+(dl?fmtDate(dl):'Theo job')+'</div>';
+    if (t.emp_notes) html += '<div style="font-size:.78rem;color:#1a3a8f;margin-top:3px;font-style:italic">💬 NV: '+esc(t.emp_notes)+'</div>';
+    html += '</div>';
     html += '<div class="task-acts">';
     html += (st?'<span class="badge" style="background:'+st.color+'22;color:'+st.color+'">'+st.label+'</span>':'');
     html += ' <button class="btn btn-sm btn-outline" onclick="openEditTask(\''+t.id+'\',\''+job.id+'\')">Sửa</button>';
@@ -778,6 +780,30 @@ function uploadFilesSequential(files, index, type, id, gridId, done) {
       .uploadImage(b64, file.type, file.name, type, id, APP.user.name||'', '');
   };
   reader.readAsDataURL(file);
+}
+
+function uploadEvidenceAndUnlock(input, taskId) {
+  uploadEvidence(input, taskId, function() {
+    // Sau khi upload xong, unlock nút đổi trạng thái
+    ['btn-start-'+taskId, 'btn-done-'+taskId].forEach(function(id) {
+      var btn = document.getElementById(id);
+      if (!btn) return;
+      btn.style.opacity = '1';
+      btn.style.cursor  = 'pointer';
+      // Swap toast click → real action
+      var newBtn = btn.cloneNode(true);
+      var isStart = id.indexOf('start') > -1;
+      newBtn.onclick = function() {
+        var tst = APP.stList('task');
+        var norm = function(s){ return (s||'').toLowerCase().replace(/\s/g,''); };
+        var targetS = isStart
+          ? tst.filter(function(s){ return norm(s.label)==='đanglàm'; })[0]
+          : tst.filter(function(s){ return norm(s.label)==='hoànthanh'||norm(s.label)==='đãxong'; })[0];
+        if (targetS) empUpdStatus(taskId, targetS.id, '');
+      };
+      btn.parentNode.replaceChild(newBtn, btn);
+    });
+  });
 }
 
 function uploadEvidence(input, taskId) {
@@ -1130,27 +1156,54 @@ function openEmpTask(taskId) {
       var ipS   = tst.filter(function(s){ return norm(s.label)==='đanglàm'; })[0];
       var isDone = doneS && st && norm(st.label)===norm(doneS.label);
       var isIP   = ipS   && st && norm(st.label)===norm(ipS.label);
+      var hasEvidence = imgs.length > 0;
       var html = '<div class="modal-hd"><h3>'+esc(t.name)+'</h3><button class="btn-x" onclick="closeModal()">✕</button></div>';
       html += '<div class="modal-bd">';
-      html += (st?'<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px"><span class="badge" style="background:'+st.color+'22;color:'+st.color+';font-size:.9rem;padding:6px 14px">'+st.label+'</span><button class="btn btn-sm btn-outline" onclick="closeModal();openEmpJobView(\''+t.job_id+'\')">👜 Xem Job tổng thể</button></div>':'');
-      html += (t.notes?'<div class="detail-box" style="margin-bottom:16px"><h4>Ghi chú từ quản lý</h4><p style="font-size:.88rem;white-space:pre-line">'+esc(t.notes)+'</p></div>':'');
-      html += '<div class="divider"></div>';
-      html += '<div class="fg" style="margin-bottom:16px"><label>Ghi chú khi làm</label><textarea id="emp-notes" placeholder="Ghi lại vấn đề, lưu ý...">'+esc(t.notes||'')+'</textarea></div>';
-      html += '<div>';
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><strong>Ảnh bằng chứng ('+imgs.length+')</strong><button class="btn btn-sm btn-outline" onclick="document.getElementById(\'euf-'+taskId+'\').click()">+ Tải ảnh</button></div>';
-      html += '<input type="file" id="euf-'+taskId+'" accept="image/*" multiple style="display:none" onchange="uploadEvidence(this,\''+taskId+'\')">';
-      html += '<div class="imgs-grid" id="ei-'+taskId+'">';
-      imgs.forEach(function(img){
-        var cdnUrl = img.cdn_url || 'https://lh3.googleusercontent.com/d/'+img.drive_file_id;
-        var viewUrl = 'https://drive.google.com/file/d/'+img.drive_file_id+'/view';
-        html += '<div class="img-th"><img src="'+cdnUrl+'" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" onclick="openLightbox(\''+cdnUrl+'\',\''+viewUrl+'\')">'
-          + '<button class="img-del" onclick="event.stopPropagation();delEvidence(\''+taskId+'\',\''+img.drive_file_id+'\',\'ei-'+taskId+'\')">✕</button></div>';
-      });
-      html += '</div></div></div>';
+
+      // Status + xem job
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">';
+      if (st) html += '<span class="badge" style="background:'+st.color+'22;color:'+st.color+';font-size:.9rem;padding:6px 14px">'+st.label+'</span>';
+      html += '<button class="btn btn-sm btn-outline" onclick="closeModal();openEmpJobView(\''+t.job_id+'\')">👜 Xem Job</button>';
+      html += '</div>';
+
+      // Ghi chú từ quản lý (readonly)
+      if (t.notes) html += '<div class="detail-box" style="margin-bottom:14px;border-left:3px solid #0d1b4b"><h4 style="color:#0d1b4b">📋 Ghi chú từ quản lý</h4><p style="font-size:.88rem;white-space:pre-line">'+esc(t.notes)+'</p></div>';
+
+      // Ảnh bằng chứng — PHẢI up trước khi đổi trạng thái
+      html += '<div style="margin-bottom:14px">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+      html += '<div><strong>Ảnh tình trạng</strong>';
+      if (!hasEvidence && !isDone) html += ' <span style="font-size:.78rem;color:#c0392b;font-weight:500">— cần có ảnh để đổi trạng thái</span>';
+      html += '</div><button class="btn btn-sm btn-outline" onclick="document.getElementById(\'euf-'+taskId+'\').click()">+ Tải ảnh</button></div>';
+      html += '<input type="file" id="euf-'+taskId+'" accept="image/*" multiple style="display:none" onchange="uploadEvidenceAndUnlock(this,\''+taskId+'\')">';
+      if (imgs.length === 0) {
+        html += '<div style="border:2px dashed #ddd;border-radius:8px;padding:16px;text-align:center;color:#bbb;font-size:.85rem;cursor:pointer" onclick="document.getElementById(\'euf-'+taskId+'\').click()">📷 Kéo thả hoặc click để tải ảnh lên</div>';
+      } else {
+        html += '<div class="imgs-grid" id="ei-'+taskId+'">';
+        imgs.forEach(function(img){
+          var cdnUrl  = img.cdn_url || 'https://lh3.googleusercontent.com/d/'+img.drive_file_id;
+          var viewUrl = 'https://drive.google.com/file/d/'+img.drive_file_id+'/view';
+          html += '<div class="img-th"><img src="'+cdnUrl+'" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" onclick="openLightbox(\''+cdnUrl+'\',\''+viewUrl+'\')">'
+            + '<button class="img-del" onclick="event.stopPropagation();delEvidence(\''+taskId+'\',\''+img.drive_file_id+'\',\'ei-'+taskId+'\')">✕</button></div>';
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+
+      // Ghi chú của nhân viên
+      html += '<div class="fg"><label>✍️ Ghi chú cho quản lý</label>';
+      html += '<textarea id="emp-notes" rows="3" placeholder="Ghi lại tình trạng, vấn đề phát sinh, lưu ý...">'+esc(t.emp_notes||'')+'</textarea></div>';
+
+      html += '</div>';
       html += '<div class="modal-ft" style="justify-content:space-between"><button class="btn btn-outline" onclick="closeModal()">Đóng</button><div style="display:flex;gap:8px">';
-      if (ipS && !isIP && !isDone) html += '<button class="btn btn-outline" style="border-color:#FF9800;color:#FF9800" onclick="empUpdStatus(\''+taskId+'\',\''+ipS.id+'\',\''+t.job_id+'\')">▶ Bắt đầu</button>';
-      if (doneS && !isDone) html += '<button class="btn btn-green" onclick="empUpdStatus(\''+taskId+'\',\''+doneS.id+'\',\''+t.job_id+'\')">✓ Hoàn thành</button>';
-      html += '<button class="btn btn-blue" onclick="empSaveNotes(\''+taskId+'\',\''+t.job_id+'\')">Lưu</button>';
+      // Nút đổi trạng thái — disable nếu chưa có ảnh
+      if (ipS && !isIP && !isDone) {
+        html += '<button id="btn-start-'+taskId+'" class="btn btn-outline" style="border-color:#FF9800;color:#FF9800'+(hasEvidence?'':';opacity:.4;cursor:not-allowed')+'" onclick="'+(hasEvidence?'empUpdStatus(\''+taskId+'\',\''+ipS.id+'\',\''+t.job_id+'\')':'toast(\'Vui lòng tải ảnh tình trạng trước\',\'err\')')+'" >▶ Bắt đầu</button>';
+      }
+      if (doneS && !isDone) {
+        html += '<button id="btn-done-'+taskId+'" class="btn btn-green'+(hasEvidence?'':' disabled')+'" style="'+(hasEvidence?'':';opacity:.4;cursor:not-allowed')+'" onclick="'+(hasEvidence?'empUpdStatus(\''+taskId+'\',\''+doneS.id+'\',\''+t.job_id+'\')':'toast(\'Vui lòng tải ảnh tình trạng trước\',\'err\')')+'" >✓ Hoàn thành</button>';
+      }
+      html += '<button class="btn btn-blue" onclick="empSaveNotes(\''+taskId+'\',\''+t.job_id+'\')">Lưu ghi chú</button>';
       html += '</div></div>';
       setModal(html);
     })
@@ -1221,11 +1274,11 @@ function empUpdStatus(taskId, statusId, jobId) {
 }
 
 function empSaveNotes(taskId, jobId) {
-  var notes = gv('emp-notes');
+  var empNotes = gv('emp-notes');
   google.script.run
-    .withSuccessHandler(function(){ toast('Đã lưu','ok'); closeModal(); })
+    .withSuccessHandler(function(){ toast('Đã lưu ghi chú','ok'); })
     .withFailureHandler(function(e){ toast(e.message,'err'); })
-    .updateTask(taskId, {notes: notes, job_id: jobId});
+    .updateTask(taskId, {emp_notes: empNotes, job_id: jobId});
 }
 
 // ---- SETTINGS ----

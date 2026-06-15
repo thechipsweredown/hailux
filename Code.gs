@@ -25,7 +25,7 @@ function setupSheets() {
   const schemas = {
     Users:         ['id','name','role','email','created_at'],
     Jobs:          ['id','code','name','category','customer_name','customer_contact','received_date','deadline','revenue','repair_scope','status_id','notes','created_at','avatar_id'],
-    Tasks:         ['id','job_id','name','order','assignee_id','deadline','status_id','completed_at','notes','created_at','evidence_id'],
+    Tasks:         ['id','job_id','name','order','assignee_id','deadline','status_id','completed_at','notes','created_at','evidence_id','emp_notes'],
     Statuses:      ['id','entity_type','label','color','order'],
     TaskTemplates: ['id','name','description'],
     Settings:      ['key','value'],
