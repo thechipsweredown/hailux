@@ -494,11 +494,11 @@ function autoUpdateJobStatus(jobId) {
 
   const statuses = getStatuses();
   const taskStatuses = statuses.filter(s => s.entity_type === 'task');
-  const doneStatus       = findStatusByNorm(taskStatuses, 'hoànthanh') || findStatusByNorm(taskStatuses, 'đãxong');
+  const doneStatus       = findStatusByNorm(taskStatuses, 'hoànthành') || findStatusByNorm(taskStatuses, 'đãxong');
   const inProgressStatus = findStatusByNorm(taskStatuses, 'đanglàm');
 
   const jobStatuses   = statuses.filter(s => s.entity_type === 'job');
-  const jobDone       = findStatusByNorm(jobStatuses, 'hoànthanh');
+  const jobDone       = findStatusByNorm(jobStatuses, 'hoànthành');
   const jobInProgress = findStatusByNorm(jobStatuses, 'đanglàm');
   const jobNotStarted = findStatusByNorm(jobStatuses, 'chưalàm');
 
@@ -534,7 +534,7 @@ function getEnrichedTasksForAssignee(assigneeId) {
   const taskStatuses = statuses.filter(s => s.entity_type === 'task');
 
   // Tìm status linh hoạt theo label
-  const doneStatus    = findStatusByNorm(taskStatuses, 'hoànthanh')
+  const doneStatus    = findStatusByNorm(taskStatuses, 'hoànthành')
                      || findStatusByNorm(taskStatuses, 'đãxong');
   const ipStatus      = findStatusByNorm(taskStatuses, 'đanglàm');
   const pendingStatus = findStatusByNorm(taskStatuses, 'treo');
@@ -627,7 +627,7 @@ function getDashboardStats(filters) {
   });
 
   const totalRevenue = jobs.reduce((sum, j) => sum + (Number(j.revenue) || 0), 0);
-  const doneStatus   = findStatusByNorm(jobStatuses, 'hoànthanh');
+  const doneStatus   = findStatusByNorm(jobStatuses, 'hoànthành');
   const completedRevenue = jobs
     .filter(j => doneStatus && j.status_id === doneStatus.id)
     .reduce((sum, j) => sum + (Number(j.revenue) || 0), 0);
@@ -638,7 +638,7 @@ function getDashboardStats(filters) {
     return (!doneStatus || j.status_id !== doneStatus.id) && new Date(j.deadline) < now;
   }).length;
 
-  const doneTSId = findStatusByNorm(taskStatuses, 'hoànthanh')?.id || findStatusByNorm(taskStatuses, 'đãxong')?.id;
+  const doneTSId = findStatusByNorm(taskStatuses, 'hoànthành')?.id || findStatusByNorm(taskStatuses, 'đãxong')?.id;
   const ipTSId   = findStatusByNorm(taskStatuses, 'đanglàm')?.id;
 
   const employeeStats = users

@@ -301,11 +301,11 @@ function renderWholesale() {
       var norm = function(s){ return (s||'').toLowerCase().replace(/\s/g,''); };
       var done = jobs.filter(function(j){
         var st = jst.filter(function(s){ return s.id===j.status_id; })[0];
-        return st && (norm(st.label)==='hoànthanh');
+        return st && (norm(st.label)==='hoànthành');
       }).sort(function(a,b){ return (b.updated_at||b.created_at||'').localeCompare(a.updated_at||a.created_at||''); });
       var pending = jobs.filter(function(j){
         var st = jst.filter(function(s){ return s.id===j.status_id; })[0];
-        return !st || norm(st.label)!=='hoànthanh';
+        return !st || norm(st.label)!=='hoànthành';
       }).sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); });
 
       var html = '<div class="page-header"><div><h1>Đơn hàng của bạn</h1><p class="sub">Khách sỉ</p></div></div>';
@@ -539,7 +539,7 @@ function renderJobsTable() {
   rows.forEach(function(j) {
     var st   = APP.st(j.status_id);
     var norm = (st ? st.label : '').toLowerCase().replace(/\s/g,'');
-    var over = j.deadline && new Date(j.deadline) < new Date() && norm !== 'hoànthanh' && norm !== 'hủy';
+    var over = j.deadline && new Date(j.deadline) < new Date() && norm !== 'hoànthành' && norm !== 'hủy';
     var daysLeft = j.deadline ? Math.ceil((new Date(j.deadline)-new Date())/86400000) : null;
     html += '<tr>';
     html += '<td><span style="font-weight:700;color:#0d1b4b;font-size:.88rem">'+esc(j.code||'—')+'</span></td>';
@@ -716,7 +716,7 @@ function renderDAG(tasks, tst) {
     var stLabel = st ? st.label : '';
     var nl = (stLabel||'').toLowerCase().replace(/\s/g,'');
     var cls = 'todo', icon = '○';
-    if (nl==='hoànthanh'||nl==='đãxong')    { cls='done';        icon='✓'; }
+    if (nl==='hoànthành'||nl==='đãxong')    { cls='done';        icon='✓'; }
     else if (nl==='đanglàm')                { cls='in_progress'; icon='⟳'; }
     else if (nl==='treo')                   { cls='pending';     icon='⏸'; }
     else if (nl==='từchối'||nl==='reject')  { cls='rejected';    icon='✕'; }
@@ -931,7 +931,7 @@ function uploadEvidenceAndUnlock(input, taskId) {
                 var tst=APP.stList('task'), norm=function(s){return (s||'').toLowerCase().replace(/\s/g,'');};
                 var isStart = b.id.indexOf('start')>-1;
                 var s = isStart ? tst.filter(function(x){return norm(x.label)==='đanglàm';})[0]
-                                : tst.filter(function(x){return norm(x.label)==='hoànthanh'||norm(x.label)==='đãxong';})[0];
+                                : tst.filter(function(x){return norm(x.label)==='hoànthành'||norm(x.label)==='đãxong';})[0];
                 if (s) empUpdStatus(taskId, s.id, '');
               }; })(btn);
             });
@@ -1168,7 +1168,7 @@ function renderTasksContent() {
   var norm = function(s){ return (s||'').toLowerCase().replace(/\s/g,''); };
 
   // Group by status, priority order
-  var order = { 'đanglàm':1, 'chưalàm':2, 'treo':3, 'hoànthanh':4, 'đãxong':4 };
+  var order = { 'đanglàm':1, 'chưalàm':2, 'treo':3, 'hoànthành':4, 'đãxong':4 };
   var groups = {};
   tst.forEach(function(s){ groups[s.id] = { status: s, items: [] }; });
 
@@ -1210,7 +1210,7 @@ function renderTasksContent() {
 
     pageItems.forEach(function(t) {
       var dl = t.effective_deadline;
-      var isDone = s && (norm(s.label)==='hoànthanh'||norm(s.label)==='đãxong');
+      var isDone = s && (norm(s.label)==='hoànthành'||norm(s.label)==='đãxong');
       var over = dl && new Date(dl) < new Date() && !isDone;
       var daysLeft = dl ? Math.ceil((new Date(dl)-new Date())/86400000) : null;
       html += '<tr>';
@@ -1297,7 +1297,7 @@ function openEmpTask(taskId) {
       var st = tst.filter(function(s){ return s.id===t.status_id; })[0];
       // So sánh không phân biệt hoa thường
       var norm = function(s){ return (s||'').toLowerCase().replace(/\s/g,''); };
-      var doneS = tst.filter(function(s){ return norm(s.label)==='hoànthanh'||norm(s.label)==='đãxong'; })[0];
+      var doneS = tst.filter(function(s){ return norm(s.label)==='hoànthành'||norm(s.label)==='đãxong'; })[0];
       var ipS   = tst.filter(function(s){ return norm(s.label)==='đanglàm'; })[0];
       var isDone = doneS && st && norm(st.label)===norm(doneS.label);
       var isIP   = ipS   && st && norm(st.label)===norm(ipS.label);
