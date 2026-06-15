@@ -933,7 +933,7 @@ function uploadEvidenceAndUnlock(input, taskId) {
                 var isStart = b.id.indexOf('start')>-1;
                 var s = isStart ? tst.filter(function(x){return norm(x.label)==='đanglàm';})[0]
                                 : tst.filter(function(x){return norm(x.label)==='hoànthành'||norm(x.label)==='đãxong';})[0];
-                if (s) empUpdStatus(taskId, s.id, '');
+                if (s) empUpdStatusBtn(b, taskId, s.id, '');
               }; })(btn);
             });
             // Ẩn cảnh báo "cần có ảnh"
@@ -1430,13 +1430,14 @@ function openEmpJobView(jobId) {
     .getJobWithDetails(jobId);
 }
 
-function empUpdStatus(taskId, statusId, jobId, btn) {
-  gsRun(btn||null, 'updateTask', [taskId, {status_id:statusId, job_id:jobId}],
-    function(){ toast('Đã cập nhật','ok'); closeModal(); renderMyTasks(); });
-}
 function empUpdStatusBtn(btn, taskId, statusId, jobId) {
-  gsRun(btn, 'updateTask', [taskId, {status_id:statusId, job_id:jobId}],
-    function(){ toast('Đã cập nhật','ok'); closeModal(); renderMyTasks(); });
+  // Lưu cả ghi chú + status cùng lúc
+  var empNotes = gv('emp-notes');
+  var data = { status_id: statusId };
+  if (jobId) data.job_id = jobId;
+  if (empNotes !== null) data.emp_notes = empNotes;
+  gsRun(btn, 'updateTask', [taskId, data],
+    function(){ toast('Đã lưu','ok'); closeModal(); renderMyTasks(); });
 }
 
 function empSaveNotes(taskId, jobId, btn) {
