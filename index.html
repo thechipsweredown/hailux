@@ -463,7 +463,8 @@ function loadDashboard() {
       var html = '<div class="page-header"><div><h1>Dashboard</h1><p class="sub">Tổng quan công việc</p></div></div>';
       html += '<div class="stats-grid">';
       html += '<div class="stat-card blue"><div class="stat-val">'+s.jobs.total+'</div><div class="stat-lbl">Tổng số Job</div><div class="stat-sub">'+s.jobs.overdue+' quá hạn</div></div>';
-      html += '<div class="stat-card orange"><div class="stat-val">'+s.tasks.total+'</div><div class="stat-lbl">Tổng số Task</div><div class="stat-sub">'+(s.tasks.by_status['Đang làm']||0)+' đang làm</div></div>';
+      var inProgressCount = Object.keys(s.tasks.by_status).reduce(function(sum,k){ return sum + (k.toLowerCase().replace(/\s/g,'')==='đanglàm' ? s.tasks.by_status[k] : 0); }, 0);
+      html += '<div class="stat-card orange"><div class="stat-val">'+s.tasks.total+'</div><div class="stat-lbl">Tổng số Task</div><div class="stat-sub">'+inProgressCount+' đang làm</div></div>';
       html += '<div class="stat-card green"><div class="stat-val money">'+fmt(s.revenue.total)+'</div><div class="stat-lbl">Tổng doanh thu</div><div class="stat-sub money">'+fmt(s.revenue.completed)+' hoàn thành</div></div>';
       html += '<div class="stat-card red"><div class="stat-val">'+s.jobs.overdue+'</div><div class="stat-lbl">Job quá hạn</div><div class="stat-sub">Cần xử lý ngay</div></div>';
       html += '</div>';
