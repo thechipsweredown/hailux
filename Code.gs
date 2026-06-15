@@ -774,7 +774,30 @@ function getTaskWithImages(taskId) {
   const task = getTaskById(taskId);
   const ids = task && task.evidence_id ? String(task.evidence_id).split(',').filter(Boolean) : [];
   const images = ids.map(id => ({ drive_file_id: id, cdn_url: 'https://lh3.googleusercontent.com/d/' + id }));
-  return { task: task, images: images };
+
+  // Tính availability để block action nếu chưa đến lượt
+  let availability = 'ready';
+  if (task) {
+    const allTasks = getTasksByJob(task.job_id).sort((a,b) => Number(a.order)-Number(b.order));
+    const statuses = getStatuses().filter(s => s.entity_type === 'task');
+    const doneStatus = findStatusByNorm(statuses, 'hoànthành') || findStatusByNorm(statuses, 'đãxong');
+    const myOrder = Number(task.order);
+    const prevTask     = allTasks.find(t => Number(t.order) === myOrder - 1) || null;
+    const prevPrevTask = allTasks.find(t => Number(t.order) === myOrder - 2) || null;
+    const isPassable   = t => doneStatus && t.status_id === doneStatus.id;
+    const prevIsDone   = !prevTask || isPassable(prevTask);
+    const ppIsDone     = prevPrevTask && isPassable(prevPrevTask);
+    const ipStatus     = findStatusByNorm(statuses, 'đanglàm');
+    const isDone       = doneStatus && task.status_id === doneStatus.id;
+    const isIP         = ipStatus   && task.status_id === ipStatus.id;
+    if (isDone)          availability = 'done';
+    else if (isIP)       availability = 'in_progress';
+    else if (prevIsDone) availability = 'ready';
+    else if (ppIsDone)   availability = 'upcoming';
+    else                 availability = 'blocked';
+  }
+
+  return { task: task, images: images, availability: availability };
 }
 
 function getAllTasksWithDetails(filters) {

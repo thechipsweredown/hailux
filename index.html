@@ -1293,7 +1293,8 @@ function openEmpTask(taskId) {
   showModal(spinner());
   google.script.run
     .withSuccessHandler(function(data) {
-      var t = data.task, imgs = data.images;
+      var t = data.task, imgs = data.images, avail = data.availability || 'ready';
+      var canAct = (avail === 'ready' || avail === 'in_progress');
       var tst = APP.stList('task');
       var st = tst.filter(function(s){ return s.id===t.status_id; })[0];
       // So sánh không phân biệt hoa thường
@@ -1303,6 +1304,10 @@ function openEmpTask(taskId) {
       var isDone = doneS && st && norm(st.label)===norm(doneS.label);
       var isIP   = ipS   && st && norm(st.label)===norm(ipS.label);
       var hasEvidence = imgs.length > 0;
+      // Hiện banner nếu chưa đến lượt
+      if (!canAct && avail !== 'done') {
+        var blockMsg = avail === 'upcoming' ? '⏰ Task này sắp đến lượt — chờ task trước hoàn thành' : '🔒 Task này chưa đến lượt — cần hoàn thành task trước';
+      }
       var html = '<div class="modal-hd"><h3>'+esc(t.name)+'</h3><button class="btn-x" onclick="closeModal()">✕</button></div>';
       html += '<div class="modal-bd">';
 
@@ -1312,8 +1317,20 @@ function openEmpTask(taskId) {
       html += '<button class="btn btn-sm btn-outline" onclick="closeModal();openEmpJobView(\''+t.job_id+'\')">👜 Xem Job</button>';
       html += '</div>';
 
+      // Banner chưa đến lượt
+      if (!canAct && avail !== 'done') {
+        var blockMsg = avail === 'upcoming' ? '⏰ Sắp đến lượt — chờ task trước hoàn thành' : '🔒 Chưa đến lượt — cần hoàn thành task trước';
+        html += '<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.85rem;color:#7b5800">'+blockMsg+'</div>';
+      }
+
       // Ghi chú từ quản lý (readonly)
       if (t.notes) html += '<div class="detail-box" style="margin-bottom:14px;border-left:3px solid #0d1b4b"><h4 style="color:#0d1b4b">📋 Ghi chú từ quản lý</h4><p style="font-size:.88rem;white-space:pre-line">'+esc(t.notes)+'</p></div>';
+
+      // Ảnh + action chỉ hiện khi đến lượt
+      if (!canAct && avail !== 'done') {
+        html += '</div><div class="modal-ft"><button class="btn btn-outline" onclick="closeModal()">Đóng</button></div>';
+        setModal(html); return;
+      }
 
       // Ảnh bằng chứng — PHẢI up trước khi đổi trạng thái
       html += '<div style="margin-bottom:14px">';
