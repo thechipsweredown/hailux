@@ -46,7 +46,7 @@ function setupSheets() {
 
 function styleHeaderRow(sheet) {
   const range = sheet.getRange(1, 1, 1, sheet.getLastColumn());
-  range.setBackground('#1a1a2e').setFontColor('#ffffff').setFontWeight('bold');
+  range.setBackground('#0d1b4b').setFontColor('#ffffff').setFontWeight('bold');
   sheet.setFrozenRows(1);
 }
 
