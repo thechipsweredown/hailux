@@ -880,27 +880,27 @@ function uploadFilesSequential(files, index, type, id, gridId, done) {
 }
 
 function uploadEvidenceAndUnlock(input, taskId) {
-  uploadEvidence(input, taskId, function() {
-    // Sau khi upload xong, unlock nút đổi trạng thái
-    ['btn-start-'+taskId, 'btn-done-'+taskId].forEach(function(id) {
-      var btn = document.getElementById(id);
-      if (!btn) return;
-      btn.style.opacity = '1';
-      btn.style.cursor  = 'pointer';
-      // Swap toast click → real action
-      var newBtn = btn.cloneNode(true);
-      var isStart = id.indexOf('start') > -1;
-      newBtn.onclick = function() {
-        var tst = APP.stList('task');
-        var norm = function(s){ return (s||'').toLowerCase().replace(/\s/g,''); };
-        var targetS = isStart
-          ? tst.filter(function(s){ return norm(s.label)==='đanglàm'; })[0]
-          : tst.filter(function(s){ return norm(s.label)==='hoànthanh'||norm(s.label)==='đãxong'; })[0];
-        if (targetS) empUpdStatus(taskId, targetS.id, '');
-      };
-      btn.parentNode.replaceChild(newBtn, btn);
-    });
+  var files = Array.prototype.slice.call(input.files);
+  if (!files.length) return;
+  var pending = files.length;
+  files.forEach(function(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var b64 = e.target.result.split(',')[1];
+      google.script.run
+        .withSuccessHandler(function() {
+          pending--;
+          if (pending === 0) {
+            toast('Đã tải '+files.length+' ảnh', 'ok');
+            openEmpTask(taskId); // reload modal → hiện ảnh + unlock nút
+          }
+        })
+        .withFailureHandler(function(er){ toast(er.message,'err'); })
+        .uploadTaskEvidence(b64, file.type, file.name, taskId, APP.user?APP.user.name:'');
+    };
+    reader.readAsDataURL(file);
   });
+  input.value = '';
 }
 
 function uploadEvidence(input, taskId) {
