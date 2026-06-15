@@ -1360,6 +1360,7 @@ function openEmpJobView(jobId) {
   showModal(spinner(), true);
   google.script.run
     .withSuccessHandler(function(job) {
+      if (!job) { setModal('<p class="empty">Không tìm thấy Job</p>'); return; }
       var tst  = APP.stList('task');
       var myId = APP.user ? APP.user.id : '';
 
@@ -1422,7 +1423,7 @@ function empUpdStatusBtn(btn, taskId, statusId, jobId) {
 
 function empSaveNotes(taskId, jobId, btn) {
   var empNotes = gv('emp-notes');
-  gsRun(btn||null, 'updateTask', [{emp_notes:empNotes, job_id:jobId}, taskId],
+  gsRun(btn||null, 'updateTask', [taskId, {emp_notes:empNotes, job_id:jobId}],
     function(){ toast('Đã lưu ghi chú','ok'); });
 }
 
