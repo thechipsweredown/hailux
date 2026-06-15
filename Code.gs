@@ -70,6 +70,7 @@ function seedDefaultData(ss) {
   const settingsSheet = ss.getSheetByName('Settings');
   if (settingsSheet.getLastRow() <= 1) {
     settingsSheet.appendRow(['manager_password', '1234']);
+    settingsSheet.appendRow(['wholesale_password', '0000']);
     settingsSheet.appendRow(['app_name', 'HaiLux']);
     settingsSheet.appendRow(['drive_folder_id', '']);
   }
@@ -131,6 +132,16 @@ function getHeaders(sheet) {
 // ============================================================
 // AUTH
 // ============================================================
+
+function verifyWholesalePassword(password) {
+  const settings = sheetToObjects(getSheet('Settings'));
+  const entry = settings.find(s => s.key === 'wholesale_password');
+  return entry && String(entry.value) === String(password);
+}
+
+function getWholesaleJobs() {
+  return getJobs().filter(j => (j.category||'').toLowerCase().includes('sỉ'));
+}
 
 function verifyManagerPassword(password) {
   const settings = sheetToObjects(getSheet('Settings'));
