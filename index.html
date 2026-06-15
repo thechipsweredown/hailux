@@ -811,15 +811,13 @@ function openEditTask(taskId, jobId) {
     .getTaskById(taskId);
 }
 
-function saveTask(taskId, jobId) {
+function saveTask(taskId, jobId, btn) {
   var data = { job_id: jobId, name: gv('t-name'), order: Number(gv('t-ord'))||1, assignee_id: gv('t-asgn'), deadline: gv('t-dl'), status_id: gv('t-st'), notes: gv('t-notes') };
   if (!data.name) { toast('Vui lòng nhập tên task','err'); return; }
-  var fn = taskId ? 'updateTask' : 'createTask';
+  var fn   = taskId ? 'updateTask' : 'createTask';
   var args = taskId ? [taskId, data] : [data];
-  var runner = google.script.run
-    .withSuccessHandler(function(){ toast(taskId?'Đã cập nhật':'Đã thêm task','ok'); closeModal(); openJobDetail(jobId); })
-    .withFailureHandler(function(e){ toast(e.message,'err'); });
-  runner[fn].apply(runner, args);
+  gsRun(btn||document.querySelector('.modal-ft .btn-blue'), fn, args,
+    function(){ toast(taskId?'Đã cập nhật':'Đã thêm task','ok'); closeModal(); openJobDetail(jobId); });
 }
 
 function delTask(taskId, jobId) {
@@ -1345,12 +1343,12 @@ function openEmpTask(taskId) {
       html += '<div class="modal-ft" style="justify-content:space-between"><button class="btn btn-outline" onclick="closeModal()">Đóng</button><div style="display:flex;gap:8px">';
       // Nút đổi trạng thái — disable nếu chưa có ảnh
       if (ipS && !isIP && !isDone) {
-        html += '<button id="btn-start-'+taskId+'" class="btn btn-outline" style="border-color:#FF9800;color:#FF9800'+(hasEvidence?'':';opacity:.4;cursor:not-allowed')+'" onclick="'+(hasEvidence?'empUpdStatus(\''+taskId+'\',\''+ipS.id+'\',\''+t.job_id+'\')':'toast(\'Vui lòng tải ảnh tình trạng trước\',\'err\')')+'" >▶ Bắt đầu</button>';
+        html += '<button id="btn-start-'+taskId+'" class="btn btn-outline" style="border-color:#FF9800;color:#FF9800'+(hasEvidence?'':';opacity:.4;cursor:not-allowed')+'" onclick="'+(hasEvidence?'empUpdStatusBtn(this,\''+taskId+'\',\''+ipS.id+'\',\''+t.job_id+'\')':'toast(\'Vui lòng tải ảnh tình trạng trước\',\'err\')')+'" >▶ Bắt đầu</button>';
       }
       if (doneS && !isDone) {
-        html += '<button id="btn-done-'+taskId+'" class="btn btn-green'+(hasEvidence?'':' disabled')+'" style="'+(hasEvidence?'':';opacity:.4;cursor:not-allowed')+'" onclick="'+(hasEvidence?'empUpdStatus(\''+taskId+'\',\''+doneS.id+'\',\''+t.job_id+'\')':'toast(\'Vui lòng tải ảnh tình trạng trước\',\'err\')')+'" >✓ Hoàn thành</button>';
+        html += '<button id="btn-done-'+taskId+'" class="btn btn-green" style="'+(hasEvidence?'':'opacity:.4;cursor:not-allowed;')+'" onclick="'+(hasEvidence?'empUpdStatusBtn(this,\''+taskId+'\',\''+doneS.id+'\',\''+t.job_id+'\')':'toast(\'Vui lòng tải ảnh tình trạng trước\',\'err\')')+'" >✓ Hoàn thành</button>';
       }
-      html += '<button class="btn btn-blue" onclick="empSaveNotes(\''+taskId+'\',\''+t.job_id+'\')">Lưu ghi chú</button>';
+      html += '<button class="btn btn-blue" onclick="empSaveNotes(\''+taskId+'\',\''+t.job_id+'\',this)">Lưu ghi chú</button>';
       html += '</div></div>';
       setModal(html);
     })
@@ -1413,19 +1411,20 @@ function openEmpJobView(jobId) {
     .getJobWithDetails(jobId);
 }
 
-function empUpdStatus(taskId, statusId, jobId) {
-  google.script.run
-    .withSuccessHandler(function(){ toast('Đã cập nhật','ok'); closeModal(); renderMyTasks(); })
-    .withFailureHandler(function(e){ toast(e.message,'err'); })
-    .updateTask(taskId, {status_id: statusId, job_id: jobId});
+function empUpdStatus(taskId, statusId, jobId, btn) {
+  gsRun(btn||null, 'updateTask', [{status_id:statusId, job_id:jobId, id:taskId}, taskId],
+    function(){ toast('Đã cập nhật','ok'); closeModal(); renderMyTasks(); });
+}
+// Overload cho onclick inline: empUpdStatusBtn(this, taskId, statusId, jobId)
+function empUpdStatusBtn(btn, taskId, statusId, jobId) {
+  gsRun(btn, 'updateTask', [{status_id:statusId, job_id:jobId}, taskId],
+    function(){ toast('Đã cập nhật','ok'); closeModal(); renderMyTasks(); });
 }
 
-function empSaveNotes(taskId, jobId) {
+function empSaveNotes(taskId, jobId, btn) {
   var empNotes = gv('emp-notes');
-  google.script.run
-    .withSuccessHandler(function(){ toast('Đã lưu ghi chú','ok'); })
-    .withFailureHandler(function(e){ toast(e.message,'err'); })
-    .updateTask(taskId, {emp_notes: empNotes, job_id: jobId});
+  gsRun(btn||null, 'updateTask', [{emp_notes:empNotes, job_id:jobId}, taskId],
+    function(){ toast('Đã lưu ghi chú','ok'); });
 }
 
 // ---- SETTINGS ----
@@ -1440,16 +1439,16 @@ function renderSettings() {
       var tst = APP.stList('task');
       var html = '<div class="page-header"><div><h1>Cài đặt</h1></div></div>';
       html += '<div class="set-sec"><h3>Bảo mật</h3>';
-      html += '<div style="display:flex;gap:8px;margin-bottom:10px"><input id="new-pw" type="password" placeholder="Mật khẩu quản lý mới..." style="max-width:240px"><button class="btn btn-blue" onclick="changePw()">Đổi mật khẩu QL</button></div>';
-      html += '<div style="display:flex;gap:8px"><input id="new-ws-pw" type="password" placeholder="Mật khẩu khách sỉ mới..." style="max-width:240px"><button class="btn btn-outline" onclick="changeWsPw()">Đổi mật khẩu KS</button></div>';
+      html += '<div style="display:flex;gap:8px;margin-bottom:10px"><input id="new-pw" type="password" placeholder="Mật khẩu quản lý mới..." style="max-width:240px"><button class="btn btn-blue" onclick="changePw(this)">Đổi mật khẩu QL</button></div>';
+      html += '<div style="display:flex;gap:8px"><input id="new-ws-pw" type="password" placeholder="Mật khẩu khách sỉ mới..." style="max-width:240px"><button class="btn btn-outline" onclick="changeWsPw(this)">Đổi mật khẩu KS</button></div>';
       html += '</div>';
       html += '<div class="set-sec"><h3>Nhân viên ('+emps.length+')</h3>';
       emps.forEach(function(u) {
         html += '<div class="set-row"><span>'+esc(u.name)+'</span><div style="display:flex;gap:8px">';
         html += '<button class="btn btn-sm btn-outline" onclick="toggleRole(\''+u.id+'\',\''+esc(u.name)+'\',\''+u.role+'\')">'+(u.role==='manager'?'Manager':'Promote')+'</button>';
-        html += '<button class="btn btn-sm btn-ghost" onclick="delUser(\''+u.id+'\')">Xóa</button></div></div>';
+        html += '<button class="btn btn-sm btn-ghost" onclick="delUser(\''+u.id+'\',this)">Xóa</button></div></div>';
       });
-      html += '<div style="display:flex;gap:8px;margin-top:12px"><input id="new-uname" placeholder="Tên nhân viên mới..." style="max-width:200px"><button class="btn btn-blue" onclick="addUser()">+ Thêm</button></div></div>';
+      html += '<div style="display:flex;gap:8px;margin-top:12px"><input id="new-uname" placeholder="Tên nhân viên mới..." style="max-width:200px"><button class="btn btn-blue" onclick="addUser(this)">+ Thêm</button></div></div>';
       html += '<div class="set-sec"><h3>Trạng thái Job</h3><div class="tag-list">';
       jst.forEach(function(s){ html += '<div class="tag-it"><span class="tdot" style="background:'+s.color+'"></span>'+esc(s.label)+'<span class="rm" onclick="delStatus(\''+s.id+'\')">✕</span></div>'; });
       html += '</div><div style="display:flex;gap:8px;margin-top:10px;align-items:center"><input id="new-jst-lbl" placeholder="Tên trạng thái..." style="max-width:160px"><input type="color" id="new-jst-col" value="#607D8B" style="width:40px;padding:2px;border-radius:4px"><button class="btn btn-sm btn-outline" onclick="addStatus(\'job\')">+ Thêm</button></div></div>';
@@ -1466,10 +1465,10 @@ function renderSettings() {
     .getInitialData();
 }
 
-function changePw() { var pw=gv('new-pw'); if(!pw) return; google.script.run.withSuccessHandler(function(){ toast('Đã đổi mật khẩu QL','ok'); document.getElementById('new-pw').value=''; }).withFailureHandler(function(e){toast(e.message,'err');}).updateSetting('manager_password',pw); }
-function changeWsPw() { var pw=gv('new-ws-pw'); if(!pw) return; google.script.run.withSuccessHandler(function(){ toast('Đã đổi mật khẩu khách sỉ','ok'); document.getElementById('new-ws-pw').value=''; }).withFailureHandler(function(e){toast(e.message,'err');}).updateSetting('wholesale_password',pw); }
-function addUser() { var n=gv('new-uname').trim(); if(!n) return; google.script.run.withSuccessHandler(function(){ toast('Đã thêm','ok'); renderSettings(); }).withFailureHandler(function(e){toast(e.message,'err');}).createUser({name:n,role:'employee'}); }
-function delUser(id) { if(!confirm('Xóa nhân viên này?')) return; google.script.run.withSuccessHandler(function(){ toast('Đã xóa','ok'); renderSettings(); }).withFailureHandler(function(e){toast(e.message,'err');}).deleteUser(id); }
+function changePw(btn) { var pw=gv('new-pw'); if(!pw) return; gsRun(btn,'updateSetting',['manager_password',pw],function(){ toast('Đã đổi mật khẩu QL','ok'); document.getElementById('new-pw').value=''; }); }
+function changeWsPw(btn) { var pw=gv('new-ws-pw'); if(!pw) return; gsRun(btn,'updateSetting',['wholesale_password',pw],function(){ toast('Đã đổi mật khẩu khách sỉ','ok'); document.getElementById('new-ws-pw').value=''; }); }
+function addUser(btn) { var n=gv('new-uname').trim(); if(!n) return; gsRun(btn,'createUser',[{name:n,role:'employee'}],function(){ toast('Đã thêm','ok'); renderSettings(); }); }
+function delUser(id,btn) { if(!confirm('Xóa nhân viên này?')) return; gsRun(btn,'deleteUser',[id],function(){ toast('Đã xóa','ok'); renderSettings(); }); }
 function toggleRole(id, name, role) { google.script.run.withSuccessHandler(function(){ toast('Đã cập nhật','ok'); renderSettings(); }).withFailureHandler(function(e){toast(e.message,'err');}).updateUser(id,{role:role==='manager'?'employee':'manager'}); }
 function addStatus(type) {
   var prefix = type === 'job' ? 'new-jst' : 'new-tst';
@@ -1512,6 +1511,19 @@ function toast(msg, type) {
 function gv(id) { var e=document.getElementById(id); return e?e.value:''; }
 function spinner() { return '<div class="spin-wrap"><div class="spin"></div> Đang tải...</div>'; }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// Wrapper google.script.run với auto loading button
+function gsRun(btn, fn, args, ok, fail) {
+  if (typeof btn === 'string') btn = document.getElementById(btn);
+  var orig = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled=true; btn.innerHTML='<span class="btn-spin"></span>'; }
+  function restore(){ if(btn){ btn.disabled=false; btn.innerHTML=orig; } }
+  google.script.run
+    .withSuccessHandler(function(r){ restore(); ok&&ok(r); })
+    .withFailureHandler(function(e){ restore(); fail?fail(e):toast(e.message,'err'); })
+    [fn].apply(google.script.run, args||[]);
+}
+
 function fmtDate(d) { if(!d) return ''; var dt=new Date(d); return isNaN(dt)?String(d):dt.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}); }
 function fmtDateInput(d) { if(!d) return ''; var dt=new Date(d); return isNaN(dt)?'':dt.toISOString().split('T')[0]; }
 </script>
