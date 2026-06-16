@@ -360,9 +360,13 @@ function getJobsWithStats() {
   const tasks = getTasks();
   return jobs
     .sort((a, b) => {
-      const da = b.received_date || b.created_at || '';
-      const db = a.received_date || a.created_at || '';
-      return da.localeCompare(db);
+      const da = (b.received_date || b.created_at || '');
+      const db = (a.received_date || a.created_at || '');
+      if (da !== db) return da.localeCompare(db);
+      // Cùng ngày → mã lớn hơn lên đầu
+      const numA = parseInt((a.code || '').replace(/\D/g, ''), 10) || 0;
+      const numB = parseInt((b.code || '').replace(/\D/g, ''), 10) || 0;
+      return numB - numA;
     })
     .map(j => {
       const jobTasks  = tasks.filter(t => t.job_id === j.id);
