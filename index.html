@@ -1563,7 +1563,15 @@ function gsRun(btn, fn, args, ok, fail) {
 }
 
 function fmtDate(d) { if(!d) return ''; var dt=new Date(d); return isNaN(dt)?String(d):dt.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}); }
-function fmtDateInput(d) { if(!d) return ''; var dt=new Date(d); return isNaN(dt)?'':dt.toISOString().split('T')[0]; }
+function fmtDateInput(d) {
+  if (!d) return '';
+  var dt = new Date(d);
+  if (isNaN(dt)) return '';
+  var y = dt.getFullYear();
+  var m = String(dt.getMonth()+1).padStart(2,'0');
+  var day = String(dt.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
 </script>
 </body>
 </html>
