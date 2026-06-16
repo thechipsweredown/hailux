@@ -190,12 +190,12 @@ textarea{resize:vertical;min-height:80px}
     </div>
     <div id="form-emp" class="hidden">
       <div class="form-group"><label>Chọn tên của bạn</label><select id="sel-emp"><option value="">-- Chọn nhân viên --</option></select></div>
-      <button class="btn-primary" onclick="doLoginEmp()">Vào xem việc của tôi</button>
+      <button class="btn-primary" id="btn-login-emp" onclick="doLoginEmp()">Vào xem việc của tôi</button>
       <p class="login-error hidden" id="err-emp">Vui lòng chọn tên</p>
     </div>
     <div id="form-wholesale" class="hidden">
       <div class="form-group"><label>Mật khẩu khách sỉ</label><input type="password" id="inp-ws-pw" onkeydown="if(event.key==='Enter')doLoginWholesale()"></div>
-      <button class="btn-primary" onclick="doLoginWholesale()">Xem đơn hàng</button>
+      <button class="btn-primary" id="btn-login-ws" onclick="doLoginWholesale()">Xem đơn hàng</button>
       <p class="login-error hidden" id="err-ws">Mật khẩu không đúng</p>
     </div>
   </div>
@@ -274,9 +274,11 @@ function switchTab(tab) {
 
 function doLoginWholesale() {
   var pw = document.getElementById('inp-ws-pw').value;
+  setLoginLoading('btn-login-ws', true);
   google.script.run
     .withSuccessHandler(function(ok) {
       if (ok) {
+        setLoginLoading('btn-login-ws', false, 'Xem đơn hàng');
         APP.role = 'wholesale';
         APP.user = { name: 'Khách sỉ', role: 'wholesale' };
         document.getElementById('login-screen').classList.add('hidden');
@@ -285,10 +287,11 @@ function doLoginWholesale() {
         document.getElementById('sb-nav').innerHTML = '<div class="nav-item active" id="nav-wholesale" onclick="goTo(\'wholesale\')">📦 Đơn hàng của tôi</div>';
         goTo('wholesale');
       } else {
+        setLoginLoading('btn-login-ws', false, 'Xem đơn hàng');
         document.getElementById('err-ws').classList.remove('hidden');
       }
     })
-    .withFailureHandler(function(e){ toast(e.message,'err'); })
+    .withFailureHandler(function(e){ setLoginLoading('btn-login-ws', false, 'Xem đơn hàng'); toast(e.message,'err'); })
     .verifyWholesalePassword(pw);
 }
 
@@ -359,35 +362,34 @@ function wsJobCard(j, jst) {
   return html;
 }
 
-function setLoginLoading(loading) {
-  var btn = document.getElementById('btn-login');
+function setLoginLoading(btnId, loading, label) {
+  var btn = document.getElementById(btnId);
   if (!btn) return;
   btn.disabled = loading;
-  btn.innerHTML = loading
-    ? '<div class="btn-spin"></div> Đang kiểm tra...'
-    : 'Đăng nhập';
+  btn.innerHTML = loading ? '<div class="btn-spin"></div> Đang kiểm tra...' : (label || 'Đăng nhập');
 }
 
 function doLogin() {
   var pw = document.getElementById('inp-pw').value;
-  setLoginLoading(true);
+  setLoginLoading('btn-login', true);
   document.getElementById('err-pw').classList.add('hidden');
   google.script.run
     .withSuccessHandler(function(ok) {
-      setLoginLoading(false);
+      setLoginLoading('btn-login', false, 'Đăng nhập');
       if (ok) { APP.role = 'manager'; APP.user = {name:'Quản lý', role:'manager'}; enterApp(); }
       else { document.getElementById('err-pw').classList.remove('hidden'); }
     })
-    .withFailureHandler(function(e){ setLoginLoading(false); toast(e.message,'err'); })
+    .withFailureHandler(function(e){ setLoginLoading('btn-login', false, 'Đăng nhập'); toast(e.message,'err'); })
     .verifyManagerPassword(pw);
 }
 
 function doLoginEmp() {
   var id = document.getElementById('sel-emp').value;
   if (!id) { document.getElementById('err-emp').classList.remove('hidden'); return; }
+  setLoginLoading('btn-login-emp', true);
   APP.role = 'employee';
   APP.user = APP.user_by_id(id);
-  enterApp();
+  setTimeout(enterApp, 100); // nhỏ delay để spinner kịp hiện
 }
 
 function enterApp() {
