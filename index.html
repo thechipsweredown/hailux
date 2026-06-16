@@ -410,6 +410,9 @@ function doLogout() {
   document.getElementById('app').classList.add('hidden');
   document.getElementById('login-screen').classList.remove('hidden');
   document.getElementById('inp-pw').value = '';
+  setLoginLoading('btn-login', false, 'Đăng nhập');
+  setLoginLoading('btn-login-emp', false, 'Vào xem việc của tôi');
+  setLoginLoading('btn-login-ws', false, 'Xem đơn hàng');
 }
 
 function goTo(page) {
