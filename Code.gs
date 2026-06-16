@@ -359,7 +359,11 @@ function getJobsWithStats() {
   const jobs  = getJobs();
   const tasks = getTasks();
   return jobs
-    .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    .sort((a, b) => {
+      const da = b.received_date || b.created_at || '';
+      const db = a.received_date || a.created_at || '';
+      return da.localeCompare(db);
+    })
     .map(j => {
       const jobTasks  = tasks.filter(t => t.job_id === j.id);
       const assignees = [...new Set(jobTasks.map(t => t.assignee_id).filter(Boolean))];
