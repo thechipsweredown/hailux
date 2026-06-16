@@ -358,11 +358,13 @@ function generateJobCode() {
 function getJobsWithStats() {
   const jobs  = getJobs();
   const tasks = getTasks();
-  return jobs.map(j => {
-    const jobTasks  = tasks.filter(t => t.job_id === j.id);
-    const assignees = [...new Set(jobTasks.map(t => t.assignee_id).filter(Boolean))];
-    return { ...j, task_count: jobTasks.length, assignee_count: assignees.length };
-  });
+  return jobs
+    .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    .map(j => {
+      const jobTasks  = tasks.filter(t => t.job_id === j.id);
+      const assignees = [...new Set(jobTasks.map(t => t.assignee_id).filter(Boolean))];
+      return { ...j, task_count: jobTasks.length, assignee_count: assignees.length };
+    });
 }
 
 function createJob(data) {
