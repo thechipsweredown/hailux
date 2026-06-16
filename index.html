@@ -572,9 +572,11 @@ function renderJobsTable() {
 function openJobModal(jobId) {
   var job = jobId ? _jobs.filter(function(j){ return j.id===jobId; })[0] : null;
   var jst = APP.stList('job');
+  showModal(spinner());
+  function renderJobForm(autoCode) {
   var html = '<div class="modal-hd"><h3>'+(job?'Sửa Job':'Thêm Job mới')+'</h3><button class="btn-x" onclick="closeModal()">✕</button></div>';
   html += '<div class="modal-bd">';
-  html += '<div class="row2"><div class="fg"><label>Mã SP *</label><input id="f-code" value="'+esc(job&&job.code||'')+'" placeholder="KL001"></div>';
+  html += '<div class="row2"><div class="fg"><label>Mã SP</label><input id="f-code" value="'+esc(job&&job.code||autoCode||'')+'" placeholder="'+esc(autoCode||'S0001')+'"></div>';
   html += '<div class="fg"><label>Phân loại</label><select id="f-cat"><option'+(job&&job.category==='Khách lẻ'?' selected':'')+'>Khách lẻ</option><option'+(job&&job.category==='Khách sỉ'?' selected':'')+'>Khách sỉ</option></select></div></div>';
   html += '<div class="row2 row1"><div class="fg"><label>Tên sản phẩm *</label><input id="f-name" value="'+esc(job&&job.name||'')+'" placeholder="Túi Hermès Birkin"></div></div>';
   html += '<div class="row2"><div class="fg"><label>Khách hàng</label><input id="f-cname" value="'+esc(job&&job.customer_name||'')+'"></div>';
@@ -599,7 +601,17 @@ function openJobModal(jobId) {
   html += '<div id="f-avt-name" style="font-size:.78rem;color:#aaa;margin-top:4px"></div></div></div>';
   html += '</div></div>';
   html += '</div><div class="modal-ft"><button class="btn btn-outline" onclick="closeModal()">Hủy</button><button id="btn-save-job" class="btn btn-blue" onclick="saveJob(\''+esc(jobId||'')+'\')">Lưu</button></div>';
-  showModal(html);
+  setModal(html);
+  } // end renderJobForm
+
+  if (job) {
+    renderJobForm('');
+  } else {
+    google.script.run
+      .withSuccessHandler(function(code){ renderJobForm(code); })
+      .withFailureHandler(function(){ renderJobForm(''); })
+      .generateJobCode();
+  }
 }
 
 function saveJob(jobId) {
@@ -610,7 +622,7 @@ function saveJob(jobId) {
     revenue: gv('f-rev'), repair_scope: gv('f-scope'),
     status_id: gv('f-st'), notes: gv('f-notes')
   };
-  if (!data.code || !data.name) { toast('Vui lòng nhập mã và tên sản phẩm','err'); return; }
+  if (!data.name) { toast('Vui lòng nhập tên sản phẩm','err'); return; }
   var btn = document.getElementById('btn-save-job');
   if (btn) { btn.disabled = true; btn.textContent = 'Đang lưu...'; }
 

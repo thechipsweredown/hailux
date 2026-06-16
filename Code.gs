@@ -345,6 +345,16 @@ function getJob(id) {
   return getJobs().find(j => j.id === id) || null;
 }
 
+function generateJobCode() {
+  const jobs = getJobs();
+  let max = 0;
+  jobs.forEach(j => {
+    const m = String(j.code || '').match(/^S(\d+)$/i);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  });
+  return 'S' + String(max + 1).padStart(4, '0');
+}
+
 function getJobsWithStats() {
   const jobs  = getJobs();
   const tasks = getTasks();
