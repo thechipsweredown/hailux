@@ -62,7 +62,6 @@ function seedDefaultData(ss) {
       [genId(), 'task', 'Chưa làm',   '#9E9E9E', 1],
       [genId(), 'task', 'Đang làm',   '#FF9800', 2],
       [genId(), 'task', 'Hoàn thành', '#4CAF50', 3],
-      [genId(), 'task', 'Treo',       '#9C27B0', 4],
     ];
     statuses.forEach(r => statusSheet.appendRow(r));
   }
@@ -591,7 +590,6 @@ function getEnrichedTasksForAssignee(assigneeId) {
 
     let availability;
     if (isDone)          availability = 'done';
-    else if (isPending)  availability = 'pending';
     else if (isIP)       availability = 'in_progress';
     else if (prevIsDone) availability = 'ready';
     else if (ppIsDone)   availability = 'upcoming';
