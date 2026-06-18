@@ -181,7 +181,6 @@ textarea{resize:vertical;min-height:80px}
     <div class="login-tabs">
       <div class="login-tab active" id="tab-ql" onclick="switchTab('manager')">Quản lý</div>
       <div class="login-tab" id="tab-nv" onclick="switchTab('employee')">Nhân viên</div>
-      <div class="login-tab" id="tab-ws" onclick="switchTab('wholesale')">Khách sỉ</div>
     </div>
     <div id="form-manager">
       <div class="form-group"><label>Mật khẩu</label><input type="password" id="inp-pw" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -192,11 +191,6 @@ textarea{resize:vertical;min-height:80px}
       <div class="form-group"><label>Chọn tên của bạn</label><select id="sel-emp"><option value="">-- Chọn nhân viên --</option></select></div>
       <button class="btn-primary" id="btn-login-emp" onclick="doLoginEmp()">Vào xem việc của tôi</button>
       <p class="login-error hidden" id="err-emp">Vui lòng chọn tên</p>
-    </div>
-    <div id="form-wholesale" class="hidden">
-      <div class="form-group"><label>Mật khẩu khách sỉ</label><input type="password" id="inp-ws-pw" onkeydown="if(event.key==='Enter')doLoginWholesale()"></div>
-      <button class="btn-primary" id="btn-login-ws" onclick="doLoginWholesale()">Xem đơn hàng</button>
-      <p class="login-error hidden" id="err-ws">Mật khẩu không đúng</p>
     </div>
   </div>
 </div>
@@ -214,7 +208,6 @@ textarea{resize:vertical;min-height:80px}
     <div id="pg-tasks" class="hidden"></div>
     <div id="pg-mytasks" class="hidden"></div>
     <div id="pg-settings" class="hidden"></div>
-    <div id="pg-wholesale" class="hidden"></div>
   </div>
 </div>
 
@@ -266,100 +259,8 @@ window.onload = function() {
 function switchTab(tab) {
   document.getElementById('tab-ql').classList.toggle('active', tab === 'manager');
   document.getElementById('tab-nv').classList.toggle('active', tab === 'employee');
-  document.getElementById('tab-ws').classList.toggle('active', tab === 'wholesale');
   document.getElementById('form-manager').classList.toggle('hidden', tab !== 'manager');
   document.getElementById('form-emp').classList.toggle('hidden', tab !== 'employee');
-  document.getElementById('form-wholesale').classList.toggle('hidden', tab !== 'wholesale');
-}
-
-function doLoginWholesale() {
-  var pw = document.getElementById('inp-ws-pw').value;
-  setLoginLoading('btn-login-ws', true);
-  google.script.run
-    .withSuccessHandler(function(ok) {
-      if (ok) {
-        setLoginLoading('btn-login-ws', false, 'Xem đơn hàng');
-        APP.role = 'wholesale';
-        APP.user = { name: 'Khách sỉ', role: 'wholesale' };
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('app').classList.remove('hidden');
-        document.getElementById('sb-name').textContent = 'Khách sỉ';
-        document.getElementById('sb-nav').innerHTML = '<div class="nav-item active" id="nav-wholesale" onclick="goTo(\'wholesale\')">📦 Đơn hàng của tôi</div>';
-        goTo('wholesale');
-      } else {
-        setLoginLoading('btn-login-ws', false, 'Xem đơn hàng');
-        document.getElementById('err-ws').classList.remove('hidden');
-      }
-    })
-    .withFailureHandler(function(e){ setLoginLoading('btn-login-ws', false, 'Xem đơn hàng'); toast(e.message,'err'); })
-    .verifyWholesalePassword(pw);
-}
-
-function renderWholesale() {
-  var el = document.getElementById('pg-wholesale');
-  el.innerHTML = spinner();
-  google.script.run
-    .withSuccessHandler(function(jobs) {
-      var jst = APP.stList('job');
-      var norm = function(s){ return (s||'').toLowerCase().replace(/\s/g,''); };
-      var done = jobs.filter(function(j){
-        var st = jst.filter(function(s){ return s.id===j.status_id; })[0];
-        return st && (norm(st.label)==='hoànthành');
-      }).sort(function(a,b){ return (b.updated_at||b.created_at||'').localeCompare(a.updated_at||a.created_at||''); });
-      var pending = jobs.filter(function(j){
-        var st = jst.filter(function(s){ return s.id===j.status_id; })[0];
-        return !st || norm(st.label)!=='hoànthành';
-      }).sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); });
-
-      var html = '<div class="page-header"><div><h1>Đơn hàng của bạn</h1><p class="sub">Khách sỉ</p></div></div>';
-      // Tabs
-      html += '<div style="display:flex;gap:2px;background:#f0f0f0;border-radius:10px;padding:4px;margin-bottom:20px;width:fit-content">';
-      html += '<button id="ws-tab-pending" onclick="wsTab(\'pending\')" style="padding:8px 20px;border-radius:8px;font-size:.88rem;font-weight:600;background:#0d1b4b;color:#fff;border:none;cursor:pointer">Đang xử lý ('+pending.length+')</button>';
-      html += '<button id="ws-tab-done" onclick="wsTab(\'done\')" style="padding:8px 20px;border-radius:8px;font-size:.88rem;font-weight:600;background:transparent;color:#888;border:none;cursor:pointer">Hoàn thành ('+done.length+')</button>';
-      html += '</div>';
-
-      html += '<div id="ws-pending">';
-      if (!pending.length) html += '<div class="empty">Không có đơn hàng đang xử lý</div>';
-      pending.forEach(function(j){ html += wsJobCard(j, jst); });
-      html += '</div>';
-
-      html += '<div id="ws-done" style="display:none">';
-      if (!done.length) html += '<div class="empty">Chưa có đơn hàng hoàn thành</div>';
-      done.forEach(function(j){ html += wsJobCard(j, jst); });
-      html += '</div>';
-
-      el.innerHTML = html;
-    })
-    .withFailureHandler(function(e){ el.innerHTML = '<p class="empty">Lỗi: '+e.message+'</p>'; })
-    .getWholesaleJobs();
-}
-
-function wsTab(tab) {
-  document.getElementById('ws-pending').style.display = tab==='pending' ? '' : 'none';
-  document.getElementById('ws-done').style.display    = tab==='done'    ? '' : 'none';
-  document.getElementById('ws-tab-pending').style.background = tab==='pending' ? '#0d1b4b' : 'transparent';
-  document.getElementById('ws-tab-pending').style.color      = tab==='pending' ? '#fff'    : '#888';
-  document.getElementById('ws-tab-done').style.background    = tab==='done'    ? '#0d1b4b' : 'transparent';
-  document.getElementById('ws-tab-done').style.color         = tab==='done'    ? '#fff'    : '#888';
-}
-
-function wsJobCard(j, jst) {
-  var st = jst.filter(function(s){ return s.id===j.status_id; })[0];
-  var avt = j.avatar_id ? '<img src="https://lh3.googleusercontent.com/d/'+j.avatar_id+'" style="width:56px;height:56px;object-fit:cover;border-radius:10px;flex-shrink:0">' : '<div style="width:56px;height:56px;border-radius:10px;background:#f0f2f5;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">📦</div>';
-  var html = '<div class="card" style="margin-bottom:12px;padding:16px">';
-  html += '<div style="display:flex;align-items:center;gap:14px">';
-  html += avt;
-  html += '<div style="flex:1;min-width:0">';
-  html += '<div style="font-weight:700;font-size:.95rem">'+esc(j.code||'')+'  '+esc(j.name||'')+'</div>';
-  html += '<div style="font-size:.82rem;color:#888;margin-top:2px">';
-  if (j.received_date) html += 'Ngày nhận: '+fmtDate(j.received_date)+'  ';
-  if (j.deadline)      html += '· Deadline: '+fmtDate(j.deadline);
-  html += '</div>';
-  if (j.repair_scope)  html += '<div style="font-size:.8rem;color:#555;margin-top:4px;white-space:pre-line">'+esc(j.repair_scope)+'</div>';
-  html += '</div>';
-  if (st) html += '<span class="badge" style="background:'+st.color+'22;color:'+st.color+';flex-shrink:0">'+st.label+'</span>';
-  html += '</div></div>';
-  return html;
 }
 
 function setLoginLoading(btnId, loading, label) {
@@ -412,7 +313,6 @@ function doLogout() {
   document.getElementById('inp-pw').value = '';
   setLoginLoading('btn-login', false, 'Đăng nhập');
   setLoginLoading('btn-login-emp', false, 'Vào xem việc của tôi');
-  setLoginLoading('btn-login-ws', false, 'Xem đơn hàng');
 }
 
 function goTo(page) {
@@ -425,7 +325,6 @@ function goTo(page) {
   else if (page === 'jobs') renderJobs();
   else if (page === 'tasks') renderAllTasks();
   else if (page === 'mytasks') renderMyTasks();
-  else if (page === 'wholesale') renderWholesale();
   else if (page === 'settings') renderSettings();
 }
 
@@ -1474,7 +1373,6 @@ function renderSettings() {
       var html = '<div class="page-header"><div><h1>Cài đặt</h1></div></div>';
       html += '<div class="set-sec"><h3>Bảo mật</h3>';
       html += '<div style="display:flex;gap:8px;margin-bottom:10px"><input id="new-pw" type="password" placeholder="Mật khẩu quản lý mới..." style="max-width:240px"><button class="btn btn-blue" onclick="changePw(this)">Đổi mật khẩu QL</button></div>';
-      html += '<div style="display:flex;gap:8px"><input id="new-ws-pw" type="password" placeholder="Mật khẩu khách sỉ mới..." style="max-width:240px"><button class="btn btn-outline" onclick="changeWsPw(this)">Đổi mật khẩu KS</button></div>';
       html += '</div>';
       html += '<div class="set-sec"><h3>Nhân viên ('+emps.length+')</h3>';
       emps.forEach(function(u) {
@@ -1500,7 +1398,6 @@ function renderSettings() {
 }
 
 function changePw(btn) { var pw=gv('new-pw'); if(!pw) return; gsRun(btn,'updateSetting',['manager_password',pw],function(){ toast('Đã đổi mật khẩu QL','ok'); document.getElementById('new-pw').value=''; }); }
-function changeWsPw(btn) { var pw=gv('new-ws-pw'); if(!pw) return; gsRun(btn,'updateSetting',['wholesale_password',pw],function(){ toast('Đã đổi mật khẩu khách sỉ','ok'); document.getElementById('new-ws-pw').value=''; }); }
 function addUser(btn) { var n=gv('new-uname').trim(); if(!n) return; gsRun(btn,'createUser',[{name:n,role:'employee'}],function(){ toast('Đã thêm','ok'); renderSettings(); }); }
 function delUser(id,btn) { if(!confirm('Xóa nhân viên này?')) return; gsRun(btn,'deleteUser',[id],function(){ toast('Đã xóa','ok'); renderSettings(); }); }
 function toggleRole(id, name, role) { google.script.run.withSuccessHandler(function(){ toast('Đã cập nhật','ok'); renderSettings(); }).withFailureHandler(function(e){toast(e.message,'err');}).updateUser(id,{role:role==='manager'?'employee':'manager'}); }

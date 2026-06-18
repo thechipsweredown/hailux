@@ -69,7 +69,6 @@ function seedDefaultData(ss) {
   const settingsSheet = ss.getSheetByName('Settings');
   if (settingsSheet.getLastRow() <= 1) {
     settingsSheet.appendRow(['manager_password', '1234']);
-    settingsSheet.appendRow(['wholesale_password', '0000']);
     settingsSheet.appendRow(['app_name', 'HaiLux']);
     settingsSheet.appendRow(['drive_folder_id', '']);
   }
@@ -132,16 +131,6 @@ function getHeaders(sheet) {
 // AUTH
 // ============================================================
 
-function verifyWholesalePassword(password) {
-  const settings = sheetToObjects(getSheet('Settings'));
-  const entry = settings.find(s => s.key === 'wholesale_password');
-  return entry && String(entry.value) === String(password);
-}
-
-function getWholesaleJobs() {
-  return getJobs().filter(j => (j.category||'').toLowerCase().includes('sỉ'));
-}
-
 function verifyManagerPassword(password) {
   const settings = sheetToObjects(getSheet('Settings'));
   const entry = settings.find(s => s.key === 'manager_password');
@@ -173,19 +162,6 @@ function migrateSheets() {
       }
     });
   });
-
-  // Thêm setting wholesale_password nếu chưa có
-  const settingsSheet = ss.getSheetByName('Settings');
-  if (settingsSheet) {
-    const data = settingsSheet.getDataRange().getValues();
-    const keys = data.map(r => r[0]);
-    if (!keys.includes('wholesale_password')) {
-      settingsSheet.appendRow(['wholesale_password', '0000']);
-      Logger.log('Added wholesale_password setting');
-    } else {
-      Logger.log('wholesale_password already exists');
-    }
-  }
 
   return 'Migration hoàn tất! Xem Nhật ký thực thi để biết chi tiết.';
 }
