@@ -103,8 +103,11 @@ textarea{resize:vertical;min-height:80px}
 .task-acts{display:flex;gap:6px;flex-shrink:0}
 .sec-title{font-size:1rem;font-weight:700;color:#0d1b4b;margin:20px 0 12px;display:flex;align-items:center;gap:8px}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
-.emp-card{background:#fff;border-radius:12px;padding:16px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-left:4px solid #ddd;cursor:pointer;transition:.2s}
+.emp-card{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-left:4px solid #ddd;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:12px}
 .emp-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1);transform:translateY(-1px)}
+.ec-avt{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#f0f2f5;display:flex;align-items:center;justify-content:center;font-size:1.3rem;cursor:zoom-in;overflow:hidden}
+.ec-avt img{width:44px;height:44px;object-fit:cover;border-radius:8px;display:block}
+.ec-body{flex:1;min-width:0}
 .emp-card.in-progress{border-left-color:#FF9800}
 .emp-card.upcoming{border-left-color:#1a3a8f}
 .emp-card.done{border-left-color:#4CAF50;opacity:.7}
@@ -1188,12 +1191,18 @@ function renderMyTasks() {
           var st = tst.filter(function(s){ return s.id===t.status_id; })[0];
           var dl = t.effective_deadline;
           var over = dl && new Date(dl)<new Date() && st && st.label!=='Hoàn thành';
+          var avtId = t.job && t.job.avatar_id;
+          var avtHtml = avtId
+            ? '<div class="ec-avt" onclick="event.stopPropagation();viewImg(\''+avtId+'\')" title="Xem ảnh"><img src="https://lh3.googleusercontent.com/d/'+avtId+'" onerror="this.parentNode.innerHTML=\'📦\'"></div>'
+            : '<div class="ec-avt">📦</div>';
           html += '<div class="emp-card '+key+'" onclick="openEmpTask(\''+t.id+'\')">';
+          html += avtHtml;
+          html += '<div class="ec-body">';
           html += '<div class="ec-hd"><span class="ec-name">'+esc(t.name||'—')+'</span>';
           html += (st?'<span class="badge" style="background:'+st.color+'22;color:'+st.color+'">'+st.label+'</span>':'')+'</div>';
           html += '<div class="ec-job">'+esc((t.job&&t.job.code)||'')+' '+ esc((t.job&&t.job.name)||'—')+'</div>';
           html += '<div class="ec-dl'+(over?' over':'')+'">'+( dl?fmtDate(dl):'Không có deadline')+(over?' · Quá hạn':'')+(t.prev_task?' · Sau: '+esc(t.prev_task.name):'')+'</div>';
-          html += '</div>';
+          html += '</div></div>';
         });
       });
       if (!tasks.length) html += '<div class="empty" style="margin-top:60px">Không có task nào được giao</div>';
@@ -1417,6 +1426,10 @@ function delTmpl(id) { google.script.run.withSuccessHandler(function(){ toast('�
 function runSetup() { google.script.run.withSuccessHandler(function(r){ toast(r,'ok'); renderSettings(); }).withFailureHandler(function(e){toast(e.message,'err');}).setupSheets(); }
 
 // ---- MODAL ----
+function viewImg(fileId) {
+  var url = 'https://lh3.googleusercontent.com/d/' + fileId;
+  document.getElementById('modal-wrap').innerHTML = '<div class="modal-bg" onclick="closeModal()" style="display:flex;align-items:center;justify-content:center;padding:20px"><img src="'+url+'" style="max-width:100%;max-height:90vh;border-radius:12px;display:block"></div>';
+}
 function showModal(html) {
   document.getElementById('modal-wrap').innerHTML = '<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal">'+html+'</div></div>';
 }
