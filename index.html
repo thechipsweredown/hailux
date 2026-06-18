@@ -174,6 +174,60 @@ textarea{resize:vertical;min-height:80px}
 .dag-arrow{display:flex;align-items:center;padding:0 4px;color:#bbb;font-size:1.1rem;flex-shrink:0;margin-top:-18px}
 .dag-order{font-size:.65rem;color:#aaa;font-weight:400}
 .dag-icon{font-size:1rem;line-height:1}
+
+/* ===== BOTTOM NAV (mobile) ===== */
+#bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #eee;z-index:200}
+.bn-item{flex:1;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:#aaa;cursor:pointer;transition:.15s}
+.bn-item.active{color:#0d1b4b}
+.bn-icon{font-size:19px;line-height:1}
+
+/* ===== JOB CARD MOBILE ===== */
+.job-card-m{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:3px solid #ddd;cursor:pointer;transition:.15s}
+.job-card-m:active{opacity:.85}
+.jcm-avt{width:44px;height:44px;border-radius:8px;background:#dce5f5;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden}
+.jcm-avt img{width:44px;height:44px;object-fit:cover;border-radius:8px;display:block}
+.jcm-body{flex:1;min-width:0}
+.jcm-code{font-size:10px;color:#aaa;margin-bottom:1px}
+.jcm-name{font-size:13px;font-weight:600;color:#0d1b4b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jcm-customer{font-size:11px;color:#666;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jcm-footer{display:flex;align-items:center;justify-content:space-between;margin-top:7px;gap:8px}
+.jcm-meta{font-size:10px;color:#aaa;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ===== TASK CARD MOBILE (manager view) ===== */
+.task-card-m{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.07);cursor:pointer;transition:.15s}
+.task-card-m:active{opacity:.85}
+.tcm-name{font-size:13px;font-weight:600;color:#0d1b4b}
+.tcm-job{font-size:11px;color:#555;margin-top:3px}
+.tcm-footer{display:flex;align-items:center;justify-content:space-between;margin-top:7px;gap:8px}
+.tcm-meta{font-size:10px;color:#aaa;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ===== TABLET: sidebar icon-only ===== */
+@media(max-width:1024px) and (min-width:768px){
+  #sidebar{width:56px}
+  #main{margin-left:56px}
+  .sidebar-logo{padding:14px 0;text-align:center}
+  .sidebar-logo h2{font-size:.85rem;letter-spacing:.05em}
+  .sidebar-logo p,.sidebar-user,.sidebar-footer{display:none}
+  .nav-item{padding:12px 0;justify-content:center}
+  .nav-lbl{display:none}
+}
+
+/* ===== MOBILE: bottom nav, full-width cards ===== */
+@media(max-width:767px){
+  #sidebar{display:none}
+  #main{margin-left:0;padding:12px 12px 72px}
+  #bottom-nav{display:flex}
+  #toast-wrap{bottom:72px;right:12px}
+  .modal-bg{align-items:flex-end;padding:0}
+  .modal{max-width:100%;max-height:92vh;border-radius:16px 16px 0 0}
+  .stats-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .row2,.row3{grid-template-columns:1fr}
+  .detail-grid{grid-template-columns:1fr}
+  .page-header{margin-bottom:14px}
+  .card-toolbar{flex-direction:column;align-items:stretch;gap:8px}
+  .card-toolbar input,.card-toolbar select{max-width:100%!important;width:100%}
+  .tbl-wrap table{display:none}
+}
 </style>
 </head>
 <body>
@@ -212,6 +266,7 @@ textarea{resize:vertical;min-height:80px}
     <div id="pg-mytasks" class="hidden"></div>
     <div id="pg-settings" class="hidden"></div>
   </div>
+  <div id="bottom-nav"></div>
 </div>
 
 <div id="modal-wrap"></div>
@@ -296,6 +351,8 @@ function doLoginEmp() {
   setTimeout(enterApp, 100); // nhỏ delay để spinner kịp hiện
 }
 
+function isMobile() { return window.innerWidth < 768; }
+
 function enterApp() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
@@ -304,8 +361,11 @@ function enterApp() {
     ? [{id:'dashboard',icon:'📊',lbl:'Dashboard'},{id:'jobs',icon:'👜',lbl:'Công việc'},{id:'tasks',icon:'📋',lbl:'Đầu việc'},{id:'settings',icon:'⚙️',lbl:'Cài đặt'}]
     : [{id:'mytasks',icon:'✅',lbl:'Việc của tôi'}];
   document.getElementById('sb-nav').innerHTML = menu.map(function(m) {
-    return '<div class="nav-item" id="nav-'+m.id+'" onclick="goTo(\''+m.id+'\')"><span>'+m.icon+'</span>'+m.lbl+'</div>';
+    return '<div class="nav-item" id="nav-'+m.id+'" onclick="goTo(\''+m.id+'\')"><span>'+m.icon+'</span><span class="nav-lbl">'+m.lbl+'</span></div>';
   }).join('');
+  document.getElementById('bottom-nav').innerHTML = menu.map(function(m) {
+    return '<div class="bn-item" id="bn-'+m.id+'" onclick="goTo(\''+m.id+'\')"><span class="bn-icon">'+m.icon+'</span>'+m.lbl+'</div>';
+  }).join('') + '<div class="bn-item" onclick="doLogout()"><span class="bn-icon">↩️</span>Đăng xuất</div>';
   goTo(APP.role === 'manager' ? 'dashboard' : 'mytasks');
 }
 
@@ -322,6 +382,8 @@ function goTo(page) {
   APP.page = page;
   document.querySelectorAll('.nav-item').forEach(function(el){ el.classList.remove('active'); });
   var n = document.getElementById('nav-'+page); if(n) n.classList.add('active');
+  document.querySelectorAll('.bn-item').forEach(function(el){ el.classList.remove('active'); });
+  var bn = document.getElementById('bn-'+page); if(bn) bn.classList.add('active');
   document.querySelectorAll('#main > div').forEach(function(el){ el.classList.add('hidden'); });
   var pg = document.getElementById('pg-'+page); if(pg) pg.classList.remove('hidden');
   if (page === 'dashboard') renderDashboard();
@@ -410,20 +472,37 @@ function renderJobs() {
     .withSuccessHandler(function(jobs) {
       _jobs = jobs || []; APP.jobs = _jobs;
       var jst = APP.stList('job');
+      var mobile = isMobile();
       var html = '<div class="page-header"><div><h1>Công việc</h1><p class="sub">Quản lý tất cả job</p></div>';
       html += '<button class="btn btn-blue" onclick="openJobModal(\'\')">+ Thêm Job</button></div>';
-      html += '<div class="card"><div class="card-toolbar">';
-      html += '<input style="max-width:280px" placeholder="Tìm mã / tên / khách hàng..." oninput="_jobSearch=this.value;renderJobsTable()" value="'+esc(_jobSearch)+'">';
-      html += '<select style="max-width:160px" onchange="_jobStatus=this.value;renderJobsTable()">';
-      html += '<option value="">Tất cả trạng thái</option>';
-      jst.forEach(function(s){ html += '<option value="'+s.id+'"'+(s.id===_jobStatus?' selected':'')+'>'+s.label+'</option>'; });
-      html += '</select>';
-      var cats = APP.categories || [];
-      html += '<select style="max-width:150px" onchange="_jobCategory=this.value;renderJobsTable()">';
-      html += '<option value="">Tất cả loại KH</option>';
-      cats.forEach(function(c){ html += '<option value="'+esc(c)+'"'+(_jobCategory===c?' selected':'')+'>'+esc(c)+'</option>'; });
-      html += '</select></div>';
-      html += '<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tên SP</th><th>Loại KH</th><th>Ngày nhận</th><th>Deadline</th><th>Doanh thu</th><th>Tasks</th><th>NV</th><th>Trạng thái</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div></div>';
+      if (mobile) {
+        html += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">';
+        html += '<input placeholder="Tìm mã / tên / khách hàng..." oninput="_jobSearch=this.value;renderJobsTable()" value="'+esc(_jobSearch)+'">';
+        html += '<div style="display:flex;gap:8px">';
+        html += '<select style="flex:1" onchange="_jobStatus=this.value;renderJobsTable()">';
+        html += '<option value="">Tất cả trạng thái</option>';
+        jst.forEach(function(s){ html += '<option value="'+s.id+'"'+(s.id===_jobStatus?' selected':'')+'>'+s.label+'</option>'; });
+        html += '</select>';
+        var cats = APP.categories || [];
+        html += '<select style="flex:1" onchange="_jobCategory=this.value;renderJobsTable()">';
+        html += '<option value="">Tất cả loại KH</option>';
+        cats.forEach(function(c){ html += '<option value="'+esc(c)+'"'+(_jobCategory===c?' selected':'')+'>'+esc(c)+'</option>'; });
+        html += '</select></div></div>';
+        html += '<div id="jobs-cards"></div>';
+      } else {
+        html += '<div class="card"><div class="card-toolbar">';
+        html += '<input style="max-width:280px" placeholder="Tìm mã / tên / khách hàng..." oninput="_jobSearch=this.value;renderJobsTable()" value="'+esc(_jobSearch)+'">';
+        html += '<select style="max-width:160px" onchange="_jobStatus=this.value;renderJobsTable()">';
+        html += '<option value="">Tất cả trạng thái</option>';
+        jst.forEach(function(s){ html += '<option value="'+s.id+'"'+(s.id===_jobStatus?' selected':'')+'>'+s.label+'</option>'; });
+        html += '</select>';
+        var cats2 = APP.categories || [];
+        html += '<select style="max-width:150px" onchange="_jobCategory=this.value;renderJobsTable()">';
+        html += '<option value="">Tất cả loại KH</option>';
+        cats2.forEach(function(c){ html += '<option value="'+esc(c)+'"'+(_jobCategory===c?' selected':'')+'>'+esc(c)+'</option>'; });
+        html += '</select></div>';
+        html += '<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tên SP</th><th>Loại KH</th><th>Ngày nhận</th><th>Deadline</th><th>Doanh thu</th><th>Tasks</th><th>NV</th><th>Trạng thái</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div></div>';
+      }
       el.innerHTML = html;
       renderJobsTable();
     })
@@ -433,6 +512,7 @@ function renderJobs() {
 
 function renderJobsTable() {
   if (!_jobs) return;
+  if (isMobile()) { renderJobsCards(); return; }
   var q = (_jobSearch||'').toLowerCase();
   var rows = _jobs.filter(function(j) {
     var ms  = !q || (j.code||'').toLowerCase().indexOf(q)>=0 || (j.name||'').toLowerCase().indexOf(q)>=0 || (j.customer_name||'').toLowerCase().indexOf(q)>=0;
@@ -474,6 +554,43 @@ function renderJobsTable() {
     html += '</td></tr>';
   });
   tbody.innerHTML = html;
+}
+
+function renderJobsCards() {
+  var el = document.getElementById('jobs-cards');
+  if (!el) return;
+  var q = (_jobSearch||'').toLowerCase();
+  var rows = _jobs.filter(function(j) {
+    var ms  = !q || (j.code||'').toLowerCase().indexOf(q)>=0 || (j.name||'').toLowerCase().indexOf(q)>=0 || (j.customer_name||'').toLowerCase().indexOf(q)>=0;
+    var mst = !_jobStatus   || j.status_id === _jobStatus;
+    var mct = !_jobCategory || (j.category||'') === _jobCategory;
+    return ms && mst && mct;
+  });
+  if (!rows.length) { el.innerHTML = '<div class="empty">Không có job nào</div>'; return; }
+  var html = '';
+  rows.forEach(function(j) {
+    var st   = APP.st(j.status_id);
+    var norm = (st ? st.label : '').toLowerCase().replace(/\s/g,'');
+    var over = j.deadline && new Date(j.deadline) < new Date() && norm !== 'hoànthành' && norm !== 'hủy';
+    var daysLeft = j.deadline ? Math.ceil((new Date(j.deadline)-new Date())/86400000) : null;
+    var color = st ? st.color : '#ddd';
+    var avtHtml = j.avatar_id
+      ? '<div class="jcm-avt"><img src="https://lh3.googleusercontent.com/d/'+j.avatar_id+'" onerror="this.parentNode.innerHTML=\'📦\'"></div>'
+      : '<div class="jcm-avt">📦</div>';
+    var metaParts = [];
+    if (j.received_date) metaParts.push('Nhận '+fmtDate(j.received_date));
+    if (j.deadline) metaParts.push((over?'<span style="color:#c00">quá '+Math.abs(daysLeft)+' ngày</span>':(daysLeft!==null&&daysLeft<=7?'<span style="color:#FF9800">còn '+daysLeft+' ngày</span>':'hạn '+fmtDate(j.deadline))));
+    html += '<div class="job-card-m" style="border-left-color:'+color+'" onclick="openJobDetail(\''+j.id+'\')">';
+    html += avtHtml;
+    html += '<div class="jcm-body">';
+    html += '<div class="jcm-code">'+esc(j.code||'')+(j.category?' · '+esc(j.category):'')+'</div>';
+    html += '<div class="jcm-name">'+esc(j.name||'—')+'</div>';
+    if (j.customer_name) html += '<div class="jcm-customer">'+esc(j.customer_name)+(j.customer_contact?' · '+esc(j.customer_contact):'')+'</div>';
+    html += '<div class="jcm-footer"><span class="jcm-meta">'+metaParts.join(' · ')+'</span>';
+    if (st) html += '<span class="badge" style="background:'+st.color+'22;color:'+st.color+';flex-shrink:0">'+st.label+'</span>';
+    html += '</div></div></div>';
+  });
+  el.innerHTML = html;
 }
 
 function openJobModal(jobId) {
@@ -1124,44 +1241,65 @@ function renderTasksContent() {
     html += '<span style="width:12px;height:12px;border-radius:50%;background:'+color+';display:inline-block"></span>';
     html += '<strong style="font-size:.95rem">'+(s?s.label:'Không rõ')+'</strong>';
     html += '<span class="chip">'+total+'</span></div>';
-    html += '<div class="card"><div class="tbl-wrap"><table><thead><tr>';
-    html += '<th>Đầu việc</th><th>Job</th><th>Nhân viên</th><th>Deadline</th><th>Ghi chú</th></tr></thead><tbody>';
-
-    pageItems.forEach(function(t) {
-      var dl = t.effective_deadline;
-      var isDone = s && (norm(s.label)==='hoànthành'||norm(s.label)==='đãxong');
-      var over = dl && new Date(dl) < new Date() && !isDone;
-      var daysLeft = dl ? Math.ceil((new Date(dl)-new Date())/86400000) : null;
-      html += '<tr>';
-      html += '<td><strong>'+esc(t.name||'—')+'</strong></td>';
-      html += '<td><div style="font-size:.85rem;font-weight:500">'+esc(t.job?t.job.code:'—')+'</div><div style="font-size:.78rem;color:#aaa">'+esc(t.job?t.job.name:'')+'</div></td>';
-      html += '<td>'+(t.assignee?'<span style="font-size:.85rem">'+esc(t.assignee.name)+'</span>':'<span style="color:#ccc;font-size:.82rem">Chưa phân công</span>')+'</td>';
-      html += '<td>'+(dl
-        ? '<div style="font-size:.85rem;font-weight:'+(over?700:400)+';color:'+(over?'#0d1b4b':'#333')+'">'+fmtDate(dl)+'</div>'
-          +(over?'<div style="font-size:.75rem;color:#0d1b4b">quá '+Math.abs(daysLeft)+' ngày</div>'
-          :daysLeft!==null&&daysLeft>=0&&daysLeft<=3?'<div style="font-size:.75rem;color:#FF9800">còn '+daysLeft+' ngày</div>':'')
-        :'<span style="color:#ccc">—</span>')+'</td>';
-      html += '<td style="font-size:.82rem;color:#888;max-width:180px">'+esc(t.notes||'')+'</td>';
-      html += '</tr>';
-    });
-    html += '</tbody></table></div>';
+    if (isMobile()) {
+      html += '<div>';
+      pageItems.forEach(function(t) {
+        var dl = t.effective_deadline;
+        var isDone = s && (norm(s.label)==='hoànthành'||norm(s.label)==='đãxong');
+        var over = dl && new Date(dl) < new Date() && !isDone;
+        var daysLeft = dl ? Math.ceil((new Date(dl)-new Date())/86400000) : null;
+        var metaParts = [];
+        if (t.assignee) metaParts.push(esc(t.assignee.name));
+        if (dl) metaParts.push(over?'<span style="color:#c00">quá '+Math.abs(daysLeft)+' ngày</span>':(daysLeft!==null&&daysLeft<=3?'<span style="color:#FF9800">còn '+daysLeft+' ngày</span>':fmtDate(dl)));
+        html += '<div class="task-card-m">';
+        html += '<div class="tcm-name">'+esc(t.name||'—')+'</div>';
+        html += '<div class="tcm-job" style="color:#555;font-size:.8rem">'+esc(t.job?t.job.code+' · '+t.job.name:'—')+'</div>';
+        html += '<div class="tcm-footer"><span class="tcm-meta">'+metaParts.join(' · ')+'</span>';
+        if (s) html += '<span class="badge" style="background:'+color+'22;color:'+color+';flex-shrink:0">'+s.label+'</span>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+    } else {
+      html += '<div class="card"><div class="tbl-wrap"><table><thead><tr>';
+      html += '<th>Đầu việc</th><th>Job</th><th>Nhân viên</th><th>Deadline</th><th>Ghi chú</th></tr></thead><tbody>';
+      pageItems.forEach(function(t) {
+        var dl = t.effective_deadline;
+        var isDone = s && (norm(s.label)==='hoànthành'||norm(s.label)==='đãxong');
+        var over = dl && new Date(dl) < new Date() && !isDone;
+        var daysLeft = dl ? Math.ceil((new Date(dl)-new Date())/86400000) : null;
+        html += '<tr>';
+        html += '<td><strong>'+esc(t.name||'—')+'</strong></td>';
+        html += '<td><div style="font-size:.85rem;font-weight:500">'+esc(t.job?t.job.code:'—')+'</div><div style="font-size:.78rem;color:#aaa">'+esc(t.job?t.job.name:'')+'</div></td>';
+        html += '<td>'+(t.assignee?'<span style="font-size:.85rem">'+esc(t.assignee.name)+'</span>':'<span style="color:#ccc;font-size:.82rem">Chưa phân công</span>')+'</td>';
+        html += '<td>'+(dl
+          ? '<div style="font-size:.85rem;font-weight:'+(over?700:400)+';color:'+(over?'#0d1b4b':'#333')+'">'+fmtDate(dl)+'</div>'
+            +(over?'<div style="font-size:.75rem;color:#0d1b4b">quá '+Math.abs(daysLeft)+' ngày</div>'
+            :daysLeft!==null&&daysLeft>=0&&daysLeft<=3?'<div style="font-size:.75rem;color:#FF9800">còn '+daysLeft+' ngày</div>':'')
+          :'<span style="color:#ccc">—</span>')+'</td>';
+        html += '<td style="font-size:.82rem;color:#888;max-width:180px">'+esc(t.notes||'')+'</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
 
     // Pagination controls
     if (!isActive && totalPages > 1) {
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid #f0f0f0">';
+      var pStyle = isMobile() ? 'display:flex;align-items:center;justify-content:space-between;padding:8px 0;margin-top:4px' : 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid #f0f0f0';
+      html += '<div style="'+pStyle+'">';
       html += '<span style="font-size:.82rem;color:#888">'+((page-1)*pageSize+1)+' – '+Math.min(page*pageSize,total)+' / '+total+' task</span>';
       html += '<div style="display:flex;gap:6px">';
-      html += '<button class="btn btn-sm btn-outline" '+(page<=1?'disabled':'')+' onclick="_taskPages[\''+sid+'\']='+( page-1)+';renderTasksContent()">‹ Trước</button>';
-      // Page numbers
+      html += '<button class="btn btn-sm btn-outline" '+(page<=1?'disabled':'')+' onclick="_taskPages[\''+sid+'\']='+( page-1)+';renderTasksContent()">‹</button>';
       for (var p=1;p<=totalPages;p++) {
         html += '<button class="btn btn-sm '+(p===page?'btn-blue':'btn-outline')+'" onclick="_taskPages[\''+sid+'\']='+p+';renderTasksContent()">'+p+'</button>';
       }
-      html += '<button class="btn btn-sm btn-outline" '+(page>=totalPages?'disabled':'')+' onclick="_taskPages[\''+sid+'\']='+( page+1)+';renderTasksContent()">Sau ›</button>';
+      html += '<button class="btn btn-sm btn-outline" '+(page>=totalPages?'disabled':'')+' onclick="_taskPages[\''+sid+'\']='+( page+1)+';renderTasksContent()">›</button>';
       html += '</div></div>';
     } else if (!isActive) {
-      html += '<div style="padding:8px 16px;font-size:.82rem;color:#aaa;border-top:1px solid #f0f0f0">'+total+' task</div>';
+      var countStyle = isMobile() ? 'padding:4px 0;font-size:.82rem;color:#aaa' : 'padding:8px 16px;font-size:.82rem;color:#aaa;border-top:1px solid #f0f0f0';
+      html += '<div style="'+countStyle+'">'+total+' task</div>';
     }
-    html += '</div></div>';
+    if (!isMobile()) html += '</div>'; // close .card
+    html += '</div>'; // close group div
   });
   el2.innerHTML = html;
 }
