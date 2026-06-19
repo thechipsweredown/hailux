@@ -1229,15 +1229,18 @@ function renderAllTasks() {
 
   var fb;
   if (isMobile()) {
-    fb = '<div style="display:flex;gap:8px;margin-bottom:14px">';
-    fb += '<select id="tf-assignee" style="flex:1;min-width:0" onchange="_taskFilters.assignee_id=this.value;_taskPages={};loadAllTasks()">';
+    fb = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">';
+    fb += '<select id="tf-assignee" style="min-width:0;width:100%" onchange="_taskFilters.assignee_id=this.value;_taskPages={};loadAllTasks()">';
     fb += '<option value="">Tất cả NV</option>';
     emps.forEach(function(u){ fb += '<option value="'+u.id+'"'+(_taskFilters.assignee_id===u.id?' selected':'')+'>'+esc(u.name)+'</option>'; });
     fb += '</select>';
-    fb += '<select id="tf-status" style="flex:1;min-width:0" onchange="_taskFilters.status_id=this.value;_taskPages={};loadAllTasks()">';
+    fb += '<select id="tf-status" style="min-width:0;width:100%" onchange="_taskFilters.status_id=this.value;_taskPages={};loadAllTasks()">';
     fb += '<option value="">Tất cả TT</option>';
     tst.forEach(function(s){ fb += '<option value="'+s.id+'"'+(_taskFilters.status_id===s.id?' selected':'')+'>'+esc(s.label)+'</option>'; });
-    fb += '</select></div>';
+    fb += '</select>';
+    fb += '<input type="date" id="tf-from" value="'+_taskFilters.deadline_from+'" style="min-width:0;width:100%" onchange="_taskFilters.deadline_from=this.value;_taskPages={};loadAllTasks()">';
+    fb += '<input type="date" id="tf-to" value="'+_taskFilters.deadline_to+'" style="min-width:0;width:100%" onchange="_taskFilters.deadline_to=this.value;_taskPages={};loadAllTasks()">';
+    fb += '</div>';
   } else {
     fb = '<div style="background:#fff;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.06)">';
     fb += '<span style="font-size:.85rem;font-weight:600;color:#555">Lọc:</span>';
