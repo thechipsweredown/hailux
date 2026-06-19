@@ -1215,13 +1215,13 @@ function openTaskImgs(taskId, taskName) {
 
 // ---- ALL TASKS (Manager view) ----
 function defaultTaskFilters() {
-  var to = new Date(); var from = new Date(); from.setDate(from.getDate()-90);
+  var to = new Date(); var from = new Date(); from.setDate(from.getDate()-30);
   return { assignee_id:'', status_id:'', deadline_from: from.toISOString().split('T')[0], deadline_to: to.toISOString().split('T')[0] };
 }
 var _taskFilters = defaultTaskFilters();
 var _taskPageSize = 15;
 var _taskPages = {};
-var _taskMobileRange = '90';
+var _taskMobileRange = '30';
 function applyTaskMobileRange(val) {
   _taskMobileRange = val;
   var to = new Date();
@@ -1239,7 +1239,7 @@ function renderAllTasks() {
 
   var fb;
   if (isMobile()) {
-    var rangeVal = _taskMobileRange || '90';
+    var rangeVal = _taskMobileRange || '30';
     fb = '<div style="display:flex;gap:8px;margin-bottom:14px">';
     fb += '<select id="tf-assignee" style="flex:1;min-width:0" onchange="_taskFilters.assignee_id=this.value;_taskPages={};loadAllTasks()">';
     fb += '<option value="">Tất cả NV</option>';
