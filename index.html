@@ -430,31 +430,76 @@ function loadDashboard() {
       if (!el2) return;
       var fmt = function(n){ return Number(n).toLocaleString('vi-VN')+'đ'; };
       var html = '<div class="page-header"><div><h1>Dashboard</h1><p class="sub">Tổng quan công việc</p></div></div>';
-      html += '<div class="stats-grid">';
-      html += '<div class="stat-card blue"><div class="stat-val">'+s.jobs.total+'</div><div class="stat-lbl">Tổng số Job</div><div class="stat-sub">'+s.jobs.overdue+' quá hạn</div></div>';
       var inProgressCount = Object.keys(s.tasks.by_status).reduce(function(sum,k){ return sum + (k.toLowerCase().replace(/\s/g,'')==='đanglàm' ? s.tasks.by_status[k] : 0); }, 0);
-      html += '<div class="stat-card orange"><div class="stat-val">'+s.tasks.total+'</div><div class="stat-lbl">Tổng số Task</div><div class="stat-sub">'+inProgressCount+' đang làm</div></div>';
-      html += '<div class="stat-card green"><div class="stat-val money">'+fmt(s.revenue.total)+'</div><div class="stat-lbl">Tổng doanh thu</div><div class="stat-sub money">'+fmt(s.revenue.completed)+' hoàn thành</div></div>';
-      html += '<div class="stat-card red"><div class="stat-val">'+s.jobs.overdue+'</div><div class="stat-lbl">Job quá hạn</div><div class="stat-sub">Cần xử lý ngay</div></div>';
-      html += '</div>';
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">';
-      html += '<div class="card"><div class="card-body"><h3 style="font-size:.95rem;font-weight:700;margin-bottom:14px">Trạng thái Job</h3>';
-      Object.keys(s.jobs.by_status).forEach(function(lbl) {
-        var st = APP.stList('job').filter(function(x){ return x.label===lbl; })[0];
-        html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5"><span style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:'+(st?st.color:'#ccc')+';display:inline-block"></span>'+lbl+'</span><strong>'+s.jobs.by_status[lbl]+'</strong></div>';
-      });
-      html += '</div></div>';
-      html += '<div class="card"><div class="card-body"><h3 style="font-size:.95rem;font-weight:700;margin-bottom:14px">Trạng thái Task</h3>';
-      Object.keys(s.tasks.by_status).forEach(function(lbl) {
-        var st = APP.stList('task').filter(function(x){ return x.label===lbl; })[0];
-        html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5"><span style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:'+(st?st.color:'#ccc')+';display:inline-block"></span>'+lbl+'</span><strong>'+s.tasks.by_status[lbl]+'</strong></div>';
-      });
-      html += '</div></div></div>';
-      html += '<div class="card"><div class="card-toolbar"><strong>Thống kê nhân viên</strong></div><div class="tbl-wrap"><table><thead><tr><th>Nhân viên</th><th>Tổng</th><th>Đang làm</th><th>Chưa làm</th><th>Hoàn thành</th></tr></thead><tbody>';
-      s.employees.forEach(function(e) {
-        html += '<tr><td><strong>'+e.name+'</strong></td><td>'+e.total+'</td><td><span class="badge" style="background:#fff3e0;color:#FF9800">'+e.in_progress+'</span></td><td>'+e.todo+'</td><td><span class="badge" style="background:#e8f5e9;color:#4CAF50">'+e.done+'</span></td></tr>';
-      });
-      html += '</tbody></table></div></div>';
+      if (isMobile()) {
+        // Stat bars: 4 hàng ngang
+        var statBars = [
+          {color:'#2196F3', val:s.jobs.total,       lbl:'Tổng Job',      sub:s.jobs.overdue+' quá hạn'},
+          {color:'#FF9800', val:s.tasks.total,       lbl:'Tổng Task',     sub:inProgressCount+' đang làm'},
+          {color:'#4CAF50', val:fmt(s.revenue.total),lbl:'Doanh thu',     sub:fmt(s.revenue.completed)+' HT'},
+          {color:'#0d1b4b', val:s.jobs.overdue,      lbl:'Job quá hạn',   sub:'Cần xử lý ngay'},
+        ];
+        html += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">';
+        statBars.forEach(function(b){
+          html += '<div style="background:#fff;border-radius:10px;border-left:4px solid '+b.color+';padding:10px 14px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.06)">';
+          html += '<div style="display:flex;align-items:center;gap:12px">';
+          html += '<span style="font-size:1.5rem;font-weight:700;color:#0d1b4b;min-width:40px">'+b.val+'</span>';
+          html += '<span style="font-size:.85rem;font-weight:500;color:#444">'+b.lbl+'</span></div>';
+          html += '<span style="font-size:.75rem;color:#aaa;text-align:right">'+b.sub+'</span></div>';
+        });
+        html += '</div>';
+        // Status grids 2 col
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">';
+        html += '<div class="card"><div class="card-body" style="padding:14px"><strong style="font-size:.85rem">Trạng thái Job</strong>';
+        Object.keys(s.jobs.by_status).forEach(function(lbl) {
+          var st = APP.stList('job').filter(function(x){ return x.label===lbl; })[0];
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f5f5f5;font-size:.82rem"><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:'+(st?st.color:'#ccc')+';flex-shrink:0;display:inline-block"></span>'+lbl+'</span><strong>'+s.jobs.by_status[lbl]+'</strong></div>';
+        });
+        html += '</div></div>';
+        html += '<div class="card"><div class="card-body" style="padding:14px"><strong style="font-size:.85rem">Trạng thái Task</strong>';
+        Object.keys(s.tasks.by_status).forEach(function(lbl) {
+          var st = APP.stList('task').filter(function(x){ return x.label===lbl; })[0];
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f5f5f5;font-size:.82rem"><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:'+(st?st.color:'#ccc')+';flex-shrink:0;display:inline-block"></span>'+lbl+'</span><strong>'+s.tasks.by_status[lbl]+'</strong></div>';
+        });
+        html += '</div></div></div>';
+        // Employee cards (mobile)
+        html += '<div style="margin-bottom:8px"><strong style="font-size:.9rem;color:#0d1b4b">Thống kê nhân viên</strong></div>';
+        s.employees.forEach(function(e) {
+          html += '<div style="background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.06)">';
+          html += '<div style="font-weight:600;font-size:.92rem;margin-bottom:8px">'+esc(e.name)+'</div>';
+          html += '<div style="display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid #f0f0f0">';
+          html += '<div style="flex:1;text-align:center;padding:6px 4px;border-right:1px solid #f0f0f0"><div style="font-size:1.1rem;font-weight:700">'+e.total+'</div><div style="font-size:.72rem;color:#aaa">Tổng</div></div>';
+          html += '<div style="flex:1;text-align:center;padding:6px 4px;border-right:1px solid #f0f0f0"><div style="font-size:1.1rem;font-weight:700;color:#FF9800">'+e.in_progress+'</div><div style="font-size:.72rem;color:#aaa">Đang làm</div></div>';
+          html += '<div style="flex:1;text-align:center;padding:6px 4px;border-right:1px solid #f0f0f0"><div style="font-size:1.1rem;font-weight:700">'+e.todo+'</div><div style="font-size:.72rem;color:#aaa">Chưa làm</div></div>';
+          html += '<div style="flex:1;text-align:center;padding:6px 4px"><div style="font-size:1.1rem;font-weight:700;color:#4CAF50">'+e.done+'</div><div style="font-size:.72rem;color:#aaa">Hoàn thành</div></div>';
+          html += '</div></div>';
+        });
+      } else {
+        html += '<div class="stats-grid">';
+        html += '<div class="stat-card blue"><div class="stat-val">'+s.jobs.total+'</div><div class="stat-lbl">Tổng số Job</div><div class="stat-sub">'+s.jobs.overdue+' quá hạn</div></div>';
+        html += '<div class="stat-card orange"><div class="stat-val">'+s.tasks.total+'</div><div class="stat-lbl">Tổng số Task</div><div class="stat-sub">'+inProgressCount+' đang làm</div></div>';
+        html += '<div class="stat-card green"><div class="stat-val money">'+fmt(s.revenue.total)+'</div><div class="stat-lbl">Tổng doanh thu</div><div class="stat-sub money">'+fmt(s.revenue.completed)+' hoàn thành</div></div>';
+        html += '<div class="stat-card red"><div class="stat-val">'+s.jobs.overdue+'</div><div class="stat-lbl">Job quá hạn</div><div class="stat-sub">Cần xử lý ngay</div></div>';
+        html += '</div>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">';
+        html += '<div class="card"><div class="card-body"><h3 style="font-size:.95rem;font-weight:700;margin-bottom:14px">Trạng thái Job</h3>';
+        Object.keys(s.jobs.by_status).forEach(function(lbl) {
+          var st = APP.stList('job').filter(function(x){ return x.label===lbl; })[0];
+          html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5"><span style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:'+(st?st.color:'#ccc')+';display:inline-block"></span>'+lbl+'</span><strong>'+s.jobs.by_status[lbl]+'</strong></div>';
+        });
+        html += '</div></div>';
+        html += '<div class="card"><div class="card-body"><h3 style="font-size:.95rem;font-weight:700;margin-bottom:14px">Trạng thái Task</h3>';
+        Object.keys(s.tasks.by_status).forEach(function(lbl) {
+          var st = APP.stList('task').filter(function(x){ return x.label===lbl; })[0];
+          html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5"><span style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:'+(st?st.color:'#ccc')+';display:inline-block"></span>'+lbl+'</span><strong>'+s.tasks.by_status[lbl]+'</strong></div>';
+        });
+        html += '</div></div></div>';
+        html += '<div class="card"><div class="card-toolbar"><strong>Thống kê nhân viên</strong></div><div class="tbl-wrap"><table><thead><tr><th>Nhân viên</th><th>Tổng</th><th>Đang làm</th><th>Chưa làm</th><th>Hoàn thành</th></tr></thead><tbody>';
+        s.employees.forEach(function(e) {
+          html += '<tr><td><strong>'+e.name+'</strong></td><td>'+e.total+'</td><td><span class="badge" style="background:#fff3e0;color:#FF9800">'+e.in_progress+'</span></td><td>'+e.todo+'</td><td><span class="badge" style="background:#e8f5e9;color:#4CAF50">'+e.done+'</span></td></tr>';
+        });
+        html += '</tbody></table></div></div>';
+      }
       el2.innerHTML = html;
     })
     .withFailureHandler(function(e){ var c=document.getElementById('dash-content'); if(c) c.innerHTML='<p class="empty">Lỗi: '+e.message+'</p>'; })
@@ -1162,20 +1207,39 @@ function renderAllTasks() {
   var emps = APP.emps();
   var tst  = APP.stList('task');
 
-  var fb = '<div style="background:#fff;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.06)">';
-  fb += '<span style="font-size:.85rem;font-weight:600;color:#555">Lọc:</span>';
-  fb += '<select id="tf-assignee" style="padding:6px 10px;font-size:.83rem;max-width:160px" onchange="_taskFilters.assignee_id=this.value;_taskPages={};loadAllTasks()">';
-  fb += '<option value="">Tất cả NV</option>';
-  emps.forEach(function(u){ fb += '<option value="'+u.id+'"'+(_taskFilters.assignee_id===u.id?' selected':'')+'>'+esc(u.name)+'</option>'; });
-  fb += '</select>';
-  fb += '<select id="tf-status" style="padding:6px 10px;font-size:.83rem;max-width:150px" onchange="_taskFilters.status_id=this.value;_taskPages={};loadAllTasks()">';
-  fb += '<option value="">Tất cả TT</option>';
-  tst.forEach(function(s){ fb += '<option value="'+s.id+'"'+(_taskFilters.status_id===s.id?' selected':'')+'>'+esc(s.label)+'</option>'; });
-  fb += '</select>';
-  fb += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">Deadline từ</label><input type="date" id="tf-from" value="'+_taskFilters.deadline_from+'" style="width:135px;padding:6px 10px;font-size:.83rem" onchange="_taskFilters.deadline_from=this.value;_taskPages={};loadAllTasks()"></div>';
-  fb += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">đến</label><input type="date" id="tf-to" value="'+_taskFilters.deadline_to+'" style="width:135px;padding:6px 10px;font-size:.83rem" onchange="_taskFilters.deadline_to=this.value;_taskPages={};loadAllTasks()"></div>';
-  fb += '<button class="btn btn-sm btn-ghost" onclick="_taskFilters=defaultTaskFilters();_taskPages={};renderAllTasks()">↺ Mặc định</button>';
-  fb += '</div>';
+  var fb;
+  if (isMobile()) {
+    fb = '<div style="background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)">';
+    fb += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">';
+    fb += '<select id="tf-assignee" style="font-size:.82rem;padding:6px 8px" onchange="_taskFilters.assignee_id=this.value;_taskPages={};loadAllTasks()">';
+    fb += '<option value="">Tất cả NV</option>';
+    emps.forEach(function(u){ fb += '<option value="'+u.id+'"'+(_taskFilters.assignee_id===u.id?' selected':'')+'>'+esc(u.name)+'</option>'; });
+    fb += '</select>';
+    fb += '<select id="tf-status" style="font-size:.82rem;padding:6px 8px" onchange="_taskFilters.status_id=this.value;_taskPages={};loadAllTasks()">';
+    fb += '<option value="">Tất cả TT</option>';
+    tst.forEach(function(s){ fb += '<option value="'+s.id+'"'+(_taskFilters.status_id===s.id?' selected':'')+'>'+esc(s.label)+'</option>'; });
+    fb += '</select></div>';
+    fb += '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center">';
+    fb += '<input type="date" id="tf-from" value="'+_taskFilters.deadline_from+'" style="font-size:.82rem;padding:6px 8px" onchange="_taskFilters.deadline_from=this.value;_taskPages={};loadAllTasks()">';
+    fb += '<input type="date" id="tf-to" value="'+_taskFilters.deadline_to+'" style="font-size:.82rem;padding:6px 8px" onchange="_taskFilters.deadline_to=this.value;_taskPages={};loadAllTasks()">';
+    fb += '<button class="btn btn-sm btn-ghost" style="padding:6px 8px;white-space:nowrap" onclick="_taskFilters=defaultTaskFilters();_taskPages={};renderAllTasks()">↺</button>';
+    fb += '</div></div>';
+  } else {
+    fb = '<div style="background:#fff;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.06)">';
+    fb += '<span style="font-size:.85rem;font-weight:600;color:#555">Lọc:</span>';
+    fb += '<select id="tf-assignee" style="padding:6px 10px;font-size:.83rem;max-width:160px" onchange="_taskFilters.assignee_id=this.value;_taskPages={};loadAllTasks()">';
+    fb += '<option value="">Tất cả NV</option>';
+    emps.forEach(function(u){ fb += '<option value="'+u.id+'"'+(_taskFilters.assignee_id===u.id?' selected':'')+'>'+esc(u.name)+'</option>'; });
+    fb += '</select>';
+    fb += '<select id="tf-status" style="padding:6px 10px;font-size:.83rem;max-width:150px" onchange="_taskFilters.status_id=this.value;_taskPages={};loadAllTasks()">';
+    fb += '<option value="">Tất cả TT</option>';
+    tst.forEach(function(s){ fb += '<option value="'+s.id+'"'+(_taskFilters.status_id===s.id?' selected':'')+'>'+esc(s.label)+'</option>'; });
+    fb += '</select>';
+    fb += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">Deadline từ</label><input type="date" id="tf-from" value="'+_taskFilters.deadline_from+'" style="width:135px;padding:6px 10px;font-size:.83rem" onchange="_taskFilters.deadline_from=this.value;_taskPages={};loadAllTasks()"></div>';
+    fb += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">đến</label><input type="date" id="tf-to" value="'+_taskFilters.deadline_to+'" style="width:135px;padding:6px 10px;font-size:.83rem" onchange="_taskFilters.deadline_to=this.value;_taskPages={};loadAllTasks()"></div>';
+    fb += '<button class="btn btn-sm btn-ghost" onclick="_taskFilters=defaultTaskFilters();_taskPages={};renderAllTasks()">↺ Mặc định</button>';
+    fb += '</div>';
+  }
 
   el.innerHTML = '<div class="page-header"><div><h1>Đầu việc</h1><p class="sub">Tất cả task theo trạng thái</p></div></div>'
     + fb + '<div id="tasks-content">'+spinner()+'</div>';
