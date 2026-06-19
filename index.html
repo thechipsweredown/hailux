@@ -406,18 +406,34 @@ function renderDashboard() {
   var el = document.getElementById('pg-dashboard');
   // Filter bar (render ngay, không cần đợi server)
   var cats = APP.categories || [];
-  var filterBar = '<div style="background:#fff;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.06)">';
-  filterBar += '<span style="font-size:.85rem;font-weight:600;color:#555">Lọc:</span>';
-  filterBar += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">Từ</label><input type="date" id="d-from" value="'+esc(_dashFilters.dateFrom)+'" style="width:140px;padding:6px 10px;font-size:.83rem" onchange="_dashFilters.dateFrom=this.value;loadDashboard()"></div>';
-  filterBar += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">Đến</label><input type="date" id="d-to" value="'+esc(_dashFilters.dateTo)+'" style="width:140px;padding:6px 10px;font-size:.83rem" onchange="_dashFilters.dateTo=this.value;loadDashboard()"></div>';
-  filterBar += '<select id="d-cat" style="padding:6px 10px;font-size:.83rem;max-width:160px" onchange="_dashFilters.category=this.value;loadDashboard()">';
-  filterBar += '<option value="">Tất cả loại KH</option>';
-  cats.forEach(function(c){ filterBar += '<option value="'+esc(c)+'"'+(_dashFilters.category===c?' selected':'')+'>'+esc(c)+'</option>'; });
-  filterBar += '</select>';
-  if (_dashFilters.dateFrom||_dashFilters.dateTo||_dashFilters.category) {
-    filterBar += '<button class="btn btn-sm btn-ghost" onclick="_dashFilters=defaultDashFilters();renderDashboard()">↺ Mặc định</button>';
+  var filterBar;
+  if (isMobile()) {
+    filterBar = '<div style="background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)">';
+    filterBar += '<div style="display:flex;gap:8px;margin-bottom:8px">';
+    filterBar += '<input type="date" id="d-from" value="'+esc(_dashFilters.dateFrom)+'" style="flex:1;min-width:0" onchange="_dashFilters.dateFrom=this.value;loadDashboard()">';
+    filterBar += '<input type="date" id="d-to" value="'+esc(_dashFilters.dateTo)+'" style="flex:1;min-width:0" onchange="_dashFilters.dateTo=this.value;loadDashboard()">';
+    filterBar += '</div>';
+    filterBar += '<div style="display:flex;gap:8px">';
+    filterBar += '<select id="d-cat" style="flex:1;min-width:0" onchange="_dashFilters.category=this.value;loadDashboard()">';
+    filterBar += '<option value="">Tất cả loại KH</option>';
+    cats.forEach(function(c){ filterBar += '<option value="'+esc(c)+'"'+(_dashFilters.category===c?' selected':'')+'>'+esc(c)+'</option>'; });
+    filterBar += '</select>';
+    filterBar += '<button class="btn btn-sm btn-ghost" style="flex-shrink:0" onclick="_dashFilters=defaultDashFilters();renderDashboard()">↺</button>';
+    filterBar += '</div></div>';
+  } else {
+    filterBar = '<div style="background:#fff;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.06)">';
+    filterBar += '<span style="font-size:.85rem;font-weight:600;color:#555">Lọc:</span>';
+    filterBar += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">Từ</label><input type="date" id="d-from" value="'+esc(_dashFilters.dateFrom)+'" style="width:140px;padding:6px 10px;font-size:.83rem" onchange="_dashFilters.dateFrom=this.value;loadDashboard()"></div>';
+    filterBar += '<div style="display:flex;align-items:center;gap:6px;font-size:.85rem"><label style="color:#888">Đến</label><input type="date" id="d-to" value="'+esc(_dashFilters.dateTo)+'" style="width:140px;padding:6px 10px;font-size:.83rem" onchange="_dashFilters.dateTo=this.value;loadDashboard()"></div>';
+    filterBar += '<select id="d-cat" style="padding:6px 10px;font-size:.83rem;max-width:160px" onchange="_dashFilters.category=this.value;loadDashboard()">';
+    filterBar += '<option value="">Tất cả loại KH</option>';
+    cats.forEach(function(c){ filterBar += '<option value="'+esc(c)+'"'+(_dashFilters.category===c?' selected':'')+'>'+esc(c)+'</option>'; });
+    filterBar += '</select>';
+    if (_dashFilters.dateFrom||_dashFilters.dateTo||_dashFilters.category) {
+      filterBar += '<button class="btn btn-sm btn-ghost" onclick="_dashFilters=defaultDashFilters();renderDashboard()">↺ Mặc định</button>';
+    }
+    filterBar += '</div>';
   }
-  filterBar += '</div>';
   el.innerHTML = filterBar + '<div id="dash-content">'+spinner()+'</div>';
   loadDashboard();
 }
@@ -1210,20 +1226,20 @@ function renderAllTasks() {
 
   var fb;
   if (isMobile()) {
-    fb = '<div style="background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)">';
-    fb += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">';
-    fb += '<select id="tf-assignee" style="font-size:.82rem;padding:6px 8px" onchange="_taskFilters.assignee_id=this.value;_taskPages={};loadAllTasks()">';
+    fb = '<div style="background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)">';
+    fb += '<div style="display:flex;gap:8px;margin-bottom:8px">';
+    fb += '<select id="tf-assignee" style="flex:1;min-width:0" onchange="_taskFilters.assignee_id=this.value;_taskPages={};loadAllTasks()">';
     fb += '<option value="">Tất cả NV</option>';
     emps.forEach(function(u){ fb += '<option value="'+u.id+'"'+(_taskFilters.assignee_id===u.id?' selected':'')+'>'+esc(u.name)+'</option>'; });
     fb += '</select>';
-    fb += '<select id="tf-status" style="font-size:.82rem;padding:6px 8px" onchange="_taskFilters.status_id=this.value;_taskPages={};loadAllTasks()">';
+    fb += '<select id="tf-status" style="flex:1;min-width:0" onchange="_taskFilters.status_id=this.value;_taskPages={};loadAllTasks()">';
     fb += '<option value="">Tất cả TT</option>';
     tst.forEach(function(s){ fb += '<option value="'+s.id+'"'+(_taskFilters.status_id===s.id?' selected':'')+'>'+esc(s.label)+'</option>'; });
     fb += '</select></div>';
-    fb += '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center">';
-    fb += '<input type="date" id="tf-from" value="'+_taskFilters.deadline_from+'" style="font-size:.82rem;padding:6px 8px" onchange="_taskFilters.deadline_from=this.value;_taskPages={};loadAllTasks()">';
-    fb += '<input type="date" id="tf-to" value="'+_taskFilters.deadline_to+'" style="font-size:.82rem;padding:6px 8px" onchange="_taskFilters.deadline_to=this.value;_taskPages={};loadAllTasks()">';
-    fb += '<button class="btn btn-sm btn-ghost" style="padding:6px 8px;white-space:nowrap" onclick="_taskFilters=defaultTaskFilters();_taskPages={};renderAllTasks()">↺</button>';
+    fb += '<div style="display:flex;gap:8px">';
+    fb += '<input type="date" id="tf-from" value="'+_taskFilters.deadline_from+'" style="flex:1;min-width:0" onchange="_taskFilters.deadline_from=this.value;_taskPages={};loadAllTasks()">';
+    fb += '<input type="date" id="tf-to" value="'+_taskFilters.deadline_to+'" style="flex:1;min-width:0" onchange="_taskFilters.deadline_to=this.value;_taskPages={};loadAllTasks()">';
+    fb += '<button class="btn btn-sm btn-ghost" style="flex-shrink:0" onclick="_taskFilters=defaultTaskFilters();_taskPages={};renderAllTasks()">↺</button>';
     fb += '</div></div>';
   } else {
     fb = '<div style="background:#fff;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.06)">';
