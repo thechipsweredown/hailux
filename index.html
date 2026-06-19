@@ -1229,8 +1229,7 @@ function renderAllTasks() {
 
   var fb;
   if (isMobile()) {
-    fb = '<div style="background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)">';
-    fb += '<div style="display:flex;gap:8px;margin-bottom:8px">';
+    fb = '<div style="display:flex;gap:8px;margin-bottom:14px">';
     fb += '<select id="tf-assignee" style="flex:1;min-width:0" onchange="_taskFilters.assignee_id=this.value;_taskPages={};loadAllTasks()">';
     fb += '<option value="">Tất cả NV</option>';
     emps.forEach(function(u){ fb += '<option value="'+u.id+'"'+(_taskFilters.assignee_id===u.id?' selected':'')+'>'+esc(u.name)+'</option>'; });
@@ -1239,11 +1238,6 @@ function renderAllTasks() {
     fb += '<option value="">Tất cả TT</option>';
     tst.forEach(function(s){ fb += '<option value="'+s.id+'"'+(_taskFilters.status_id===s.id?' selected':'')+'>'+esc(s.label)+'</option>'; });
     fb += '</select></div>';
-    fb += '<div style="display:flex;gap:8px">';
-    fb += '<input type="date" id="tf-from" value="'+_taskFilters.deadline_from+'" style="flex:1;min-width:0" onchange="_taskFilters.deadline_from=this.value;_taskPages={};loadAllTasks()">';
-    fb += '<input type="date" id="tf-to" value="'+_taskFilters.deadline_to+'" style="flex:1;min-width:0" onchange="_taskFilters.deadline_to=this.value;_taskPages={};loadAllTasks()">';
-    fb += '<button class="btn btn-sm btn-ghost" style="flex-shrink:0" onclick="_taskFilters=defaultTaskFilters();_taskPages={};renderAllTasks()">↺</button>';
-    fb += '</div></div>';
   } else {
     fb = '<div style="background:#fff;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.06)">';
     fb += '<span style="font-size:.85rem;font-weight:600;color:#555">Lọc:</span>';
@@ -1335,12 +1329,18 @@ function renderTasksContent() {
         var metaParts = [];
         if (t.assignee) metaParts.push(esc(t.assignee.name));
         if (dl) metaParts.push(over?'<span style="color:#c00">quá '+Math.abs(daysLeft)+' ngày</span>':(daysLeft!==null&&daysLeft<=3?'<span style="color:#FF9800">còn '+daysLeft+' ngày</span>':fmtDate(dl)));
-        html += '<div class="task-card-m">';
+        var avtId = t.job && t.job.avatar_id;
+        var avtHtml = avtId
+          ? '<div class="jcm-avt"><img src="https://lh3.googleusercontent.com/d/'+avtId+'" onerror="this.parentNode.innerHTML=\'📦\'"></div>'
+          : '<div class="jcm-avt">📦</div>';
+        html += '<div class="task-card-m" style="display:flex;align-items:flex-start;gap:12px;border-left:3px solid '+color+'">';
+        html += avtHtml;
+        html += '<div style="flex:1;min-width:0">';
         html += '<div class="tcm-name">'+esc(t.name||'—')+'</div>';
-        html += '<div class="tcm-job" style="color:#555;font-size:.8rem">'+esc(t.job?t.job.code+' · '+t.job.name:'—')+'</div>';
+        html += '<div class="tcm-job">'+esc(t.job?t.job.code+' · '+t.job.name:'—')+'</div>';
         html += '<div class="tcm-footer"><span class="tcm-meta">'+metaParts.join(' · ')+'</span>';
         if (s) html += '<span class="badge" style="background:'+color+'22;color:'+color+';flex-shrink:0">'+s.label+'</span>';
-        html += '</div></div>';
+        html += '</div></div></div>';
       });
       html += '</div>';
     } else {
