@@ -215,8 +215,11 @@ textarea{resize:vertical;min-height:80px}
 /* ===== MOBILE: bottom nav, full-width cards ===== */
 @media(max-width:767px){
   input,select,textarea{font-size:16px!important}
+  body{overflow-x:hidden}
   #sidebar{display:none}
-  #main{margin-left:0;padding:12px 12px 72px}
+  #main{margin-left:0;padding:12px 12px 72px;max-width:100vw;overflow-x:hidden}
+  #pg-dashboard,#pg-jobs,#pg-tasks,#pg-mytasks,#pg-settings{max-width:100%}
+  .task-card-m,.job-card-m,.emp-card{max-width:100%;overflow:hidden}
   #bottom-nav{display:flex}
   #toast-wrap{bottom:72px;right:12px}
   .modal-bg{align-items:flex-end;padding:0}
