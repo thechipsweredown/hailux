@@ -773,10 +773,11 @@ function getTaskWithImages(taskId) {
 
   // Tính availability để block action nếu chưa đến lượt
   let availability = 'ready';
+  let doneStatus = null;
   if (task) {
     const allTasks = getTasksByJob(task.job_id).sort((a,b) => Number(a.order)-Number(b.order));
     const statuses = getStatuses().filter(s => s.entity_type === 'task');
-    const doneStatus = findStatusByNorm(statuses, 'hoànthành') || findStatusByNorm(statuses, 'đãxong');
+    doneStatus = findStatusByNorm(statuses, 'hoànthành') || findStatusByNorm(statuses, 'đãxong');
     const myOrder = Number(task.order);
     const prevTask     = allTasks.find(t => Number(t.order) === myOrder - 1) || null;
     const prevPrevTask = allTasks.find(t => Number(t.order) === myOrder - 2) || null;
