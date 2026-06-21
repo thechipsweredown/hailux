@@ -857,39 +857,41 @@ function migrateFromXlsx() {
   var ssId = ss.getId();
   var tz   = ss.getSpreadsheetTimeZone();
 
-  // 1. Export chính file này ra xlsx để lấy image blob
-  var xlsxBlob = UrlFetchApp.fetch(
-    'https://docs.google.com/spreadsheets/d/' + ssId + '/export?format=xlsx',
-    { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() } }
-  ).getBlob().setContentType('application/zip');
-
-  var entryMap = {};
-  Utilities.unzip(xlsxBlob).forEach(function(e) { entryMap[e.getName()] = e; });
-
-  // 2. Tìm sheet nguồn (không phải system sheet của HaiLux)
+  // 1. Tìm sheet nguồn (không phải system sheet của HaiLux)
   var sysNames = ['Jobs','Tasks','Statuses','Users','TaskTemplates','Settings'];
   var srcSheet = ss.getSheets().filter(function(s) {
     return sysNames.indexOf(s.getName()) < 0;
   })[0];
   if (!srcSheet) throw new Error('Không tìm thấy sheet dữ liệu nguồn');
 
-  // 3. Tìm file drawing tương ứng với sheet nguồn
-  var sheetIdx  = ss.getSheets().indexOf(srcSheet) + 1; // 1-indexed
-  var sheetRels = entryMap['xl/worksheets/_rels/sheet' + sheetIdx + '.xml.rels'];
-  var rowToImg  = {};
-  if (sheetRels) {
-    var dm = sheetRels.getDataAsString().match(/Target="\.\.\/drawings\/(drawing\d+\.xml)"/);
-    if (dm) {
-      var drawKey  = 'xl/drawings/' + dm[1];
-      var relsKey  = 'xl/drawings/_rels/' + dm[1] + '.rels';
-      if (entryMap[drawKey]) {
-        rowToImg = _xlsxDrawingMap(
-          entryMap[drawKey].getDataAsString(),
-          entryMap[relsKey] ? entryMap[relsKey].getDataAsString()
-            : '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>'
-        );
+  // 2. Thử export xlsx để lấy ảnh — bỏ qua nếu file quá lớn (>50MB giới hạn GAS)
+  var entryMap = {};
+  var rowToImg = {};
+  try {
+    var xlsxBlob = UrlFetchApp.fetch(
+      'https://docs.google.com/spreadsheets/d/' + ssId + '/export?format=xlsx',
+      { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() } }
+    ).getBlob().setContentType('application/zip');
+    Utilities.unzip(xlsxBlob).forEach(function(e) { entryMap[e.getName()] = e; });
+
+    var sheetIdx  = ss.getSheets().indexOf(srcSheet) + 1;
+    var sheetRels = entryMap['xl/worksheets/_rels/sheet' + sheetIdx + '.xml.rels'];
+    if (sheetRels) {
+      var dm = sheetRels.getDataAsString().match(/Target="\.\.\/drawings\/(drawing\d+\.xml)"/);
+      if (dm) {
+        var drawKey = 'xl/drawings/' + dm[1];
+        var relsKey = 'xl/drawings/_rels/' + dm[1] + '.rels';
+        if (entryMap[drawKey]) {
+          rowToImg = _xlsxDrawingMap(
+            entryMap[drawKey].getDataAsString(),
+            entryMap[relsKey] ? entryMap[relsKey].getDataAsString()
+              : '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>'
+          );
+        }
       }
     }
+  } catch(e) {
+    Logger.log('Không lấy được ảnh (file quá lớn hoặc lỗi export): ' + e.message);
   }
 
   // 4. Đọc data thẳng từ sheet (Google Sheets tự xử lý date/formula)
