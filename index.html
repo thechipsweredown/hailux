@@ -666,7 +666,7 @@ function openJobModal(jobId) {
   var html = '<div class="modal-hd"><h3>'+(job?'Sửa Job':'Thêm Job mới')+'</h3><button class="btn-x" onclick="closeModal()">✕</button></div>';
   html += '<div class="modal-bd">';
   html += '<div class="row2"><div class="fg"><label>Mã SP</label><input id="f-code" value="'+esc(job&&job.code||autoCode||'')+'" placeholder="'+esc(autoCode||'S0001')+'"></div>';
-  html += '<div class="fg"><label>Phân loại</label><select id="f-cat"><option'+(job&&job.category==='Khách lẻ'?' selected':'')+'>Khách lẻ</option><option'+(job&&job.category==='Khách sỉ'?' selected':'')+'>Khách sỉ</option></select></div></div>';
+  html += '<div class="fg"><label>Phân loại</label><input id="f-cat" list="cat-list" value="'+esc(job&&job.category||'')+'" placeholder="Khách lẻ, Khách sỉ..."><datalist id="cat-list">'+(APP.categories||[]).map(function(c){return'<option value="'+esc(c)+'">';}).join('')+'</datalist></div></div>';
   html += '<div class="row2 row1"><div class="fg"><label>Tên sản phẩm *</label><input id="f-name" value="'+esc(job&&job.name||'')+'" placeholder="Túi Hermès Birkin"></div></div>';
   html += '<div class="row2"><div class="fg"><label>Khách hàng</label><input id="f-cname" value="'+esc(job&&job.customer_name||'')+'"></div>';
   html += '<div class="fg"><label>Liên hệ</label><input id="f-ccontact" value="'+esc(job&&job.customer_contact||'')+'" placeholder="SĐT/Zalo/Page"></div></div>';
