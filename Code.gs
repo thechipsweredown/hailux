@@ -844,3 +844,185 @@ function getInitialData() {
     categories: categories,
   };
 }
+
+// ============================================================
+// MIGRATION FROM XLSX
+// ============================================================
+
+function migrateFromXlsx(xlsxFileName) {
+  xlsxFileName = xlsxFileName || 'Khách hàng gửi (1)';
+
+  var files = DriveApp.getFilesByName(xlsxFileName + '.xlsx');
+  if (!files.hasNext()) throw new Error('Không tìm thấy file "' + xlsxFileName + '.xlsx" trên Drive');
+  var xlsxFile = files.next();
+
+  var entries = Utilities.unzip(xlsxFile.getBlob().setContentType('application/zip'));
+  var entryMap = {};
+  entries.forEach(function(e) { entryMap[e.getName()] = e; });
+
+  var sharedStrings = _xlsxSharedStrings(entryMap['xl/sharedStrings.xml'].getDataAsString());
+  var rowToImg      = _xlsxDrawingMap(
+    entryMap['xl/drawings/drawing1.xml'].getDataAsString(),
+    entryMap['xl/drawings/_rels/drawing1.xml.rels'].getDataAsString()
+  );
+  var dataRows = _xlsxRows(entryMap['xl/worksheets/sheet1.xml'].getDataAsString(), sharedStrings);
+
+  setupSheets();
+  _ensureJobStatus('Đã thanh toán', '#9C27B0', 5);
+
+  var statusByLabel = {};
+  sheetToObjects(getSheet('Statuses')).forEach(function(s) {
+    if (s.entity_type === 'job') statusByLabel[s.label] = s.id;
+  });
+
+  var settings = getSettings();
+  var folderSetting = settings.find(function(r) { return r.key === 'drive_folder_id'; });
+  var imgFolder = (folderSetting && folderSetting.value)
+    ? DriveApp.getFolderById(folderSetting.value)
+    : DriveApp.getRootFolder();
+
+  var jobSheet = getSheet('Jobs');
+  var count = 0;
+
+  dataRows.forEach(function(row) {
+    if (!row.code || !row.name) return;
+
+    var avatarId = '';
+    var imgName = rowToImg[row.sheetRow - 1]; // drawing rows are 0-indexed
+    if (imgName && entryMap['xl/media/' + imgName]) {
+      try {
+        var ext  = imgName.split('.').pop().toLowerCase();
+        var mime = (ext === 'png') ? 'image/png' : 'image/jpeg';
+        var imgFile = imgFolder.createFile(
+          entryMap['xl/media/' + imgName].setContentType(mime).setName(row.code + '_avatar.' + ext)
+        );
+        imgFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        avatarId = imgFile.getId();
+      } catch(e) {
+        Logger.log('Row ' + row.sheetRow + ' image error: ' + e.message);
+      }
+    }
+
+    var statusId = statusByLabel[_mapJobStatus(row.status)] || statusByLabel['Chưa làm'] || '';
+
+    jobSheet.appendRow([
+      genId(),
+      row.code,
+      row.name,
+      row.category || 'Khách lẻ',
+      row.customer_name || '',
+      row.customer_contact || '',
+      row.received_date || '',
+      row.deadline || '',
+      row.revenue || '',
+      row.repair_scope || '',
+      statusId,
+      '',
+      new Date().toISOString(),
+      avatarId
+    ]);
+    count++;
+  });
+
+  return 'Migration xong! Đã tạo ' + count + ' jobs.';
+}
+
+function _xlsxSharedStrings(xml) {
+  var strings = [];
+  var ns = XmlService.getNamespace('http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+  XmlService.parse(xml).getRootElement().getChildren('si', ns).forEach(function(si) {
+    var t = si.getChild('t', ns);
+    if (t) {
+      strings.push(t.getText());
+    } else {
+      var text = '';
+      si.getChildren('r', ns).forEach(function(r) {
+        var rt = r.getChild('t', ns);
+        if (rt) text += rt.getText();
+      });
+      strings.push(text);
+    }
+  });
+  return strings;
+}
+
+function _xlsxDrawingMap(drawingXml, relsXml) {
+  var rIdToFile = {};
+  var relsNs = XmlService.getNamespace('http://schemas.openxmlformats.org/package/2006/relationships');
+  XmlService.parse(relsXml).getRootElement().getChildren('Relationship', relsNs).forEach(function(rel) {
+    rIdToFile[rel.getAttribute('Id').getValue()] = rel.getAttribute('Target').getValue().split('/').pop();
+  });
+
+  var rowToFile = {};
+  (drawingXml.match(/<xdr:oneCellAnchor>[\s\S]*?<\/xdr:oneCellAnchor>/g) || []).forEach(function(a) {
+    var rm = a.match(/<xdr:row>(\d+)<\/xdr:row>/);
+    var em = a.match(/r:embed="(rId\d+)"/);
+    if (rm && em && rIdToFile[em[1]]) rowToFile[parseInt(rm[1])] = rIdToFile[em[1]];
+  });
+  return rowToFile;
+}
+
+function _xlsxRows(sheetXml, sharedStrings) {
+  var rows = [];
+  (sheetXml.match(/<row r="(\d+)"[^>]*>[\s\S]*?<\/row>/g) || []).forEach(function(rowXml) {
+    var sheetRow = parseInt(rowXml.match(/<row r="(\d+)"/)[1]);
+    if (sheetRow < 5) return;
+
+    var cells = {};
+    var re = /<c r="([A-Z]+)\d+"([^>]*)>([\s\S]*?)<\/c>/g;
+    var m;
+    while ((m = re.exec(rowXml)) !== null) {
+      var col = m[1], attrs = m[2], inner = m[3];
+      var tm = attrs.match(/t="([^"]*)"/);
+      var vm = inner.match(/<v>([\s\S]*?)<\/v>/);
+      if (!vm) continue;
+      var val = vm[1];
+      if (tm && tm[1] === 's') val = sharedStrings[parseInt(val)] || '';
+      cells[col] = val;
+    }
+
+    function xlDate(v) {
+      var n = parseFloat(v);
+      if (!v || isNaN(n)) return '';
+      return Utilities.formatDate(new Date(Date.UTC(1899,11,30) + n*86400000), 'UTC', 'yyyy-MM-dd');
+    }
+
+    rows.push({
+      sheetRow:         sheetRow,
+      code:             cells['C'] || '',
+      name:             cells['D'] || '',
+      received_date:    xlDate(cells['E']),
+      deadline:         xlDate(cells['F']),
+      category:         cells['G'] || '',
+      customer_name:    cells['H'] || '',
+      customer_contact: cells['I'] || '',
+      repair_scope:     cells['J'] || '',
+      revenue:          cells['K'] ? parseFloat(cells['K']) : '',
+      status:           cells['L'] || ''
+    });
+  });
+  return rows;
+}
+
+function _mapJobStatus(raw) {
+  var map = {
+    'đang sửa':      'Đang làm',
+    'đang làm':      'Đang làm',
+    'chưa làm':      'Chưa làm',
+    'hoàn thành':    'Hoàn thành',
+    'đã thanh toán': 'Đã thanh toán',
+    'hủy':           'Hủy'
+  };
+  return map[(raw || '').toLowerCase().trim()] || 'Chưa làm';
+}
+
+function _ensureJobStatus(label, color, order) {
+  var sheet = getSheet('Statuses');
+  var existing = sheetToObjects(sheet).find(function(s) {
+    return s.entity_type === 'job' && s.label === label;
+  });
+  if (existing) return existing.id;
+  var id = genId();
+  sheet.appendRow([id, 'job', label, color, order]);
+  return id;
+}
