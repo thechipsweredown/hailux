@@ -322,12 +322,12 @@ function getJob(id) {
 
 function generateJobCode() {
   const jobs = getJobs();
-  let max = 0;
-  jobs.forEach(j => {
-    const m = String(j.code || '').match(/^S(\d+)$/i);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
-  });
-  return 'S' + String(max + 1).padStart(4, '0');
+  const parsed = jobs
+    .map(j => { const m = String(j.code || '').match(/^([A-Za-z]+)(\d+)$/); return m ? { prefix: m[1].toUpperCase(), num: parseInt(m[2], 10), pad: m[2].length } : null; })
+    .filter(Boolean);
+  if (!parsed.length) return 'JOB0001';
+  const top = parsed.reduce((a, b) => b.num > a.num ? b : a);
+  return top.prefix + String(top.num + 1).padStart(top.pad, '0');
 }
 
 function getJobsWithStats() {
