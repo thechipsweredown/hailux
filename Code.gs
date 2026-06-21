@@ -847,26 +847,76 @@ function getInitialData() {
 
 // ============================================================
 // MIGRATION FROM XLSX
+// Chạy trực tiếp trong file khách gửi (container-bound script).
+// Đọc data từ sheet có sẵn, export chính file ra xlsx để lấy ảnh,
+// rồi tạo toàn bộ sheet HaiLux trong cùng spreadsheet.
 // ============================================================
 
-function migrateFromXlsx(xlsxFileName) {
-  xlsxFileName = xlsxFileName || 'Khách hàng gửi (1)';
+function migrateFromXlsx() {
+  var ss   = SpreadsheetApp.getActiveSpreadsheet();
+  var ssId = ss.getId();
+  var tz   = ss.getSpreadsheetTimeZone();
 
-  var files = DriveApp.getFilesByName(xlsxFileName + '.xlsx');
-  if (!files.hasNext()) throw new Error('Không tìm thấy file "' + xlsxFileName + '.xlsx" trên Drive');
-  var xlsxFile = files.next();
+  // 1. Export chính file này ra xlsx để lấy image blob
+  var xlsxBlob = UrlFetchApp.fetch(
+    'https://docs.google.com/spreadsheets/d/' + ssId + '/export?format=xlsx',
+    { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() } }
+  ).getBlob().setContentType('application/zip');
 
-  var entries = Utilities.unzip(xlsxFile.getBlob().setContentType('application/zip'));
   var entryMap = {};
-  entries.forEach(function(e) { entryMap[e.getName()] = e; });
+  Utilities.unzip(xlsxBlob).forEach(function(e) { entryMap[e.getName()] = e; });
 
-  var sharedStrings = _xlsxSharedStrings(entryMap['xl/sharedStrings.xml'].getDataAsString());
-  var rowToImg      = _xlsxDrawingMap(
-    entryMap['xl/drawings/drawing1.xml'].getDataAsString(),
-    entryMap['xl/drawings/_rels/drawing1.xml.rels'].getDataAsString()
-  );
-  var dataRows = _xlsxRows(entryMap['xl/worksheets/sheet1.xml'].getDataAsString(), sharedStrings);
+  // 2. Tìm sheet nguồn (không phải system sheet của HaiLux)
+  var sysNames = ['Jobs','Tasks','Statuses','Users','TaskTemplates','Settings'];
+  var srcSheet = ss.getSheets().filter(function(s) {
+    return sysNames.indexOf(s.getName()) < 0;
+  })[0];
+  if (!srcSheet) throw new Error('Không tìm thấy sheet dữ liệu nguồn');
 
+  // 3. Tìm file drawing tương ứng với sheet nguồn
+  var sheetIdx  = ss.getSheets().indexOf(srcSheet) + 1; // 1-indexed
+  var sheetRels = entryMap['xl/worksheets/_rels/sheet' + sheetIdx + '.xml.rels'];
+  var rowToImg  = {};
+  if (sheetRels) {
+    var dm = sheetRels.getDataAsString().match(/Target="\.\.\/drawings\/(drawing\d+\.xml)"/);
+    if (dm) {
+      var drawKey  = 'xl/drawings/' + dm[1];
+      var relsKey  = 'xl/drawings/_rels/' + dm[1] + '.rels';
+      if (entryMap[drawKey]) {
+        rowToImg = _xlsxDrawingMap(
+          entryMap[drawKey].getDataAsString(),
+          entryMap[relsKey] ? entryMap[relsKey].getDataAsString()
+            : '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>'
+        );
+      }
+    }
+  }
+
+  // 4. Đọc data thẳng từ sheet (Google Sheets tự xử lý date/formula)
+  var data = srcSheet.getDataRange().getValues();
+  var headerRow = -1;
+  for (var i = 0; i < data.length; i++) {
+    if (data[i].some(function(c) { return String(c).trim() === 'Mã SP'; })) {
+      headerRow = i; break;
+    }
+  }
+  if (headerRow < 0) throw new Error('Không tìm thấy header row (cần có cột "Mã SP")');
+
+  var headers = data[headerRow].map(function(h) { return String(h).trim(); });
+  var col = {
+    code:     headers.indexOf('Mã SP'),
+    name:     headers.indexOf('Tên Sản Phẩm'),
+    received: headers.indexOf('Ngày nhận'),
+    deadline: headers.indexOf('Deadline'),
+    category: headers.indexOf('Phân loại'),
+    customer: headers.indexOf('Tên khách hàng'),
+    contact:  headers.indexOf('SĐT + Địa chỉ'),
+    scope:    headers.indexOf('Hạng Mục Sửa'),
+    revenue:  headers.indexOf('Báo giá'),
+    status:   headers.indexOf('Trạng Thái')
+  };
+
+  // 5. Khởi tạo hệ thống HaiLux
   setupSheets();
   _ensureJobStatus('Đã thanh toán', '#9C27B0', 5);
 
@@ -875,75 +925,68 @@ function migrateFromXlsx(xlsxFileName) {
     if (s.entity_type === 'job') statusByLabel[s.label] = s.id;
   });
 
-  var settings = getSettings();
-  var folderSetting = settings.find(function(r) { return r.key === 'drive_folder_id'; });
-  var imgFolder = (folderSetting && folderSetting.value)
-    ? DriveApp.getFolderById(folderSetting.value)
+  var settings     = getSettings();
+  var folderRow    = settings.find(function(r) { return r.key === 'drive_folder_id'; });
+  var imgFolder    = (folderRow && folderRow.value)
+    ? DriveApp.getFolderById(folderRow.value)
     : DriveApp.getRootFolder();
 
+  // 6. Migrate từng dòng dữ liệu
   var jobSheet = getSheet('Jobs');
   var count = 0;
 
-  dataRows.forEach(function(row) {
-    if (!row.code || !row.name) return;
+  for (var r = headerRow + 1; r < data.length; r++) {
+    var row  = data[r];
+    var code = col.code >= 0 ? String(row[col.code] || '').trim() : '';
+    var name = col.name >= 0 ? String(row[col.name] || '').trim() : '';
+    if (!code || !name) continue;
 
+    // drawing row index = data array index r (0-indexed array = 0-indexed drawing row)
     var avatarId = '';
-    var imgName = rowToImg[row.sheetRow - 1]; // drawing rows are 0-indexed
+    var imgName  = rowToImg[r];
     if (imgName && entryMap['xl/media/' + imgName]) {
       try {
         var ext  = imgName.split('.').pop().toLowerCase();
-        var mime = (ext === 'png') ? 'image/png' : 'image/jpeg';
+        var mime = ext === 'png' ? 'image/png' : 'image/jpeg';
         var imgFile = imgFolder.createFile(
-          entryMap['xl/media/' + imgName].setContentType(mime).setName(row.code + '_avatar.' + ext)
+          entryMap['xl/media/' + imgName].setContentType(mime).setName(code + '_avatar.' + ext)
         );
         imgFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
         avatarId = imgFile.getId();
       } catch(e) {
-        Logger.log('Row ' + row.sheetRow + ' image error: ' + e.message);
+        Logger.log('Row ' + (r + 1) + ' image error: ' + e.message);
       }
     }
 
-    var statusId = statusByLabel[_mapJobStatus(row.status)] || statusByLabel['Chưa làm'] || '';
+    function fmtDate(v) {
+      if (!v) return '';
+      if (v instanceof Date) return Utilities.formatDate(v, tz, 'yyyy-MM-dd');
+      return String(v);
+    }
+
+    var statusId = statusByLabel[_mapJobStatus(col.status >= 0 ? String(row[col.status] || '') : '')]
+                || statusByLabel['Chưa làm'] || '';
 
     jobSheet.appendRow([
       genId(),
-      row.code,
-      row.name,
-      row.category || 'Khách lẻ',
-      row.customer_name || '',
-      row.customer_contact || '',
-      row.received_date || '',
-      row.deadline || '',
-      row.revenue || '',
-      row.repair_scope || '',
+      code,
+      name,
+      col.category >= 0 ? (String(row[col.category] || '').trim() || 'Khách lẻ') : 'Khách lẻ',
+      col.customer >= 0 ? String(row[col.customer] || '') : '',
+      col.contact  >= 0 ? String(row[col.contact]  || '') : '',
+      fmtDate(col.received >= 0 ? row[col.received] : ''),
+      fmtDate(col.deadline >= 0 ? row[col.deadline] : ''),
+      col.revenue  >= 0 ? (row[col.revenue] || '') : '',
+      col.scope    >= 0 ? String(row[col.scope]    || '') : '',
       statusId,
       '',
       new Date().toISOString(),
       avatarId
     ]);
     count++;
-  });
+  }
 
   return 'Migration xong! Đã tạo ' + count + ' jobs.';
-}
-
-function _xlsxSharedStrings(xml) {
-  var strings = [];
-  var ns = XmlService.getNamespace('http://schemas.openxmlformats.org/spreadsheetml/2006/main');
-  XmlService.parse(xml).getRootElement().getChildren('si', ns).forEach(function(si) {
-    var t = si.getChild('t', ns);
-    if (t) {
-      strings.push(t.getText());
-    } else {
-      var text = '';
-      si.getChildren('r', ns).forEach(function(r) {
-        var rt = r.getChild('t', ns);
-        if (rt) text += rt.getText();
-      });
-      strings.push(text);
-    }
-  });
-  return strings;
 }
 
 function _xlsxDrawingMap(drawingXml, relsXml) {
@@ -952,7 +995,6 @@ function _xlsxDrawingMap(drawingXml, relsXml) {
   XmlService.parse(relsXml).getRootElement().getChildren('Relationship', relsNs).forEach(function(rel) {
     rIdToFile[rel.getAttribute('Id').getValue()] = rel.getAttribute('Target').getValue().split('/').pop();
   });
-
   var rowToFile = {};
   (drawingXml.match(/<xdr:oneCellAnchor>[\s\S]*?<\/xdr:oneCellAnchor>/g) || []).forEach(function(a) {
     var rm = a.match(/<xdr:row>(\d+)<\/xdr:row>/);
@@ -960,48 +1002,6 @@ function _xlsxDrawingMap(drawingXml, relsXml) {
     if (rm && em && rIdToFile[em[1]]) rowToFile[parseInt(rm[1])] = rIdToFile[em[1]];
   });
   return rowToFile;
-}
-
-function _xlsxRows(sheetXml, sharedStrings) {
-  var rows = [];
-  (sheetXml.match(/<row r="(\d+)"[^>]*>[\s\S]*?<\/row>/g) || []).forEach(function(rowXml) {
-    var sheetRow = parseInt(rowXml.match(/<row r="(\d+)"/)[1]);
-    if (sheetRow < 5) return;
-
-    var cells = {};
-    var re = /<c r="([A-Z]+)\d+"([^>]*)>([\s\S]*?)<\/c>/g;
-    var m;
-    while ((m = re.exec(rowXml)) !== null) {
-      var col = m[1], attrs = m[2], inner = m[3];
-      var tm = attrs.match(/t="([^"]*)"/);
-      var vm = inner.match(/<v>([\s\S]*?)<\/v>/);
-      if (!vm) continue;
-      var val = vm[1];
-      if (tm && tm[1] === 's') val = sharedStrings[parseInt(val)] || '';
-      cells[col] = val;
-    }
-
-    function xlDate(v) {
-      var n = parseFloat(v);
-      if (!v || isNaN(n)) return '';
-      return Utilities.formatDate(new Date(Date.UTC(1899,11,30) + n*86400000), 'UTC', 'yyyy-MM-dd');
-    }
-
-    rows.push({
-      sheetRow:         sheetRow,
-      code:             cells['C'] || '',
-      name:             cells['D'] || '',
-      received_date:    xlDate(cells['E']),
-      deadline:         xlDate(cells['F']),
-      category:         cells['G'] || '',
-      customer_name:    cells['H'] || '',
-      customer_contact: cells['I'] || '',
-      repair_scope:     cells['J'] || '',
-      revenue:          cells['K'] ? parseFloat(cells['K']) : '',
-      status:           cells['L'] || ''
-    });
-  });
-  return rows;
 }
 
 function _mapJobStatus(raw) {
