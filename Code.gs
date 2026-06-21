@@ -1028,3 +1028,43 @@ function _ensureJobStatus(label, color, order) {
   sheet.appendRow([id, 'job', label, color, order]);
   return id;
 }
+
+// Chạy sau khi upload thư mục job_images lên Drive.
+// folderId: ID của folder chứa ảnh (lấy từ URL Drive)
+function migrateImages(folderId) {
+  if (!folderId) throw new Error('Cần truyền folderId của thư mục ảnh trên Drive');
+
+  var folder = DriveApp.getFolderById(folderId);
+  var jobs   = getJobs();
+  var jobSheet = getSheet('Jobs');
+  var headers  = getHeaders(jobSheet);
+  var codeCol  = headers.indexOf('code') + 1;
+  var avatarCol = headers.indexOf('avatar_id') + 1;
+
+  // Build map: code -> sheet row index (1-indexed, bỏ header)
+  var codeToRow = {};
+  jobs.forEach(function(j, i) { codeToRow[j.code] = i + 2; });
+
+  var files = folder.getFiles();
+  var updated = 0, skipped = 0;
+
+  while (files.hasNext()) {
+    var file = files.next();
+    var name = file.getName(); // e.g. KL00002_avatar.jpg
+    var m = name.match(/^(.+)_avatar\./i);
+    if (!m) { skipped++; continue; }
+
+    var code = m[1];
+    var row  = codeToRow[code];
+    if (!row) {
+      Logger.log('Không tìm thấy job với code: ' + code);
+      skipped++; continue;
+    }
+
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    jobSheet.getRange(row, avatarCol).setValue(file.getId());
+    updated++;
+  }
+
+  return 'Xong! Cập nhật ' + updated + ' ảnh, bỏ qua ' + skipped + ' file.';
+}
