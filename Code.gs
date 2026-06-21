@@ -793,7 +793,23 @@ function getTaskWithImages(taskId) {
     else                 availability = 'blocked';
   }
 
-  return { task: task, images: images, availability: availability };
+  // Ảnh evidence của các task đã hoàn thành trước đó trong cùng job
+  var prevTaskImages = [];
+  if (task && doneStatus) {
+    const allTasks = getTasksByJob(task.job_id).sort((a,b) => Number(a.order)-Number(b.order));
+    allTasks.forEach(function(t) {
+      if (t.id === taskId) return;
+      if (Number(t.order) >= Number(task.order)) return;
+      if (t.status_id !== doneStatus.id) return;
+      const eIds = t.evidence_id ? String(t.evidence_id).split(',').filter(Boolean) : [];
+      if (eIds.length) prevTaskImages.push({
+        task_name: t.name,
+        images: eIds.map(function(id) { return { drive_file_id: id, cdn_url: 'https://lh3.googleusercontent.com/d/' + id }; })
+      });
+    });
+  }
+
+  return { task: task, images: images, availability: availability, prev_task_images: prevTaskImages };
 }
 
 function getAllTasksWithDetails(filters) {
