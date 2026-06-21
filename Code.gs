@@ -855,7 +855,7 @@ function getInitialData() {
 function migrateFromXlsx() {
   var ss   = SpreadsheetApp.getActiveSpreadsheet();
   var ssId = ss.getId();
-  var tz   = ss.getSpreadsheetTimeZone();
+  var tz   = ss.getSpreadsheetTimeZone() || 'Asia/Ho_Chi_Minh';
 
   // 1. Tìm sheet nguồn (không phải system sheet của HaiLux)
   var sysNames = ['Jobs','Tasks','Statuses','Users','TaskTemplates','Settings'];
