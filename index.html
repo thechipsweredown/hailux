@@ -856,13 +856,16 @@ function renderTasksHtml(tasks, tst, job) {
     html += '<div class="task-meta">'+esc(asgn?asgn.name:'Chưa phân công')+' · '+(dl?fmtDate(dl):'Theo job')+'</div>';
     if (t.emp_notes) html += '<div style="font-size:.78rem;color:#1a3a8f;margin-top:3px;font-style:italic">💬 NV: '+esc(t.emp_notes)+'</div>';
     html += '</div>';
-    html += '<div class="task-acts">';
-    html += (st?'<span class="badge" style="background:'+st.color+'22;color:'+st.color+'">'+st.label+'</span>':'');
     var snapData = esc(JSON.stringify({id:t.id,name:t.name,order:t.order||i+1,assignee:asgn?asgn.name:'Chưa phân công',completed_at:t.completed_at||'',evidence_id:t.evidence_id||'',status_label:st?st.label:'',status_color:st?st.color:'#999'}));
-    if (t.evidence_id) html += ' <button class="btn btn-sm btn-outline" data-t="'+snapData+'" onclick="_showEmpTaskSnap(this)">📷 Ảnh</button>';
-    html += ' <button class="btn btn-sm btn-outline" onclick="openEditTask(\''+t.id+'\',\''+job.id+'\')">Sửa</button>';
-    html += ' <button class="btn btn-sm btn-ghost" onclick="delTask(\''+t.id+'\',\''+job.id+'\')">Xóa</button>';
-    html += '</div></div>';
+    html += '<div class="task-acts" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">';
+    html += '<div style="display:flex;align-items:center;gap:4px">';
+    html += (st?'<span class="badge" style="background:'+st.color+'22;color:'+st.color+'">'+st.label+'</span>':'');
+    if (t.evidence_id) html += '<button class="btn btn-sm btn-outline" style="padding:3px 8px" data-t="'+snapData+'" onclick="_showEmpTaskSnap(this)">📷</button>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:4px">';
+    html += '<button class="btn btn-sm btn-outline" onclick="openEditTask(\''+t.id+'\',\''+job.id+'\')">Sửa</button>';
+    html += '<button class="btn btn-sm btn-ghost" style="color:#e53935" onclick="delTask(\''+t.id+'\',\''+job.id+'\')">Xóa</button>';
+    html += '</div></div></div>';
   });
   return html;
 }
