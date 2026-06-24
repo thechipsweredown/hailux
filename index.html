@@ -860,7 +860,7 @@ function renderTasksHtml(tasks, tst, job) {
     html += '<div class="task-acts" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">';
     html += '<div style="display:flex;align-items:center;gap:4px">';
     html += (st?'<span class="badge" style="background:'+st.color+'22;color:'+st.color+'">'+st.label+'</span>':'');
-    if (t.evidence_id) html += '<button class="btn btn-sm btn-outline" style="padding:3px 8px" data-t="'+snapData+'" onclick="_showEmpTaskSnap(this)">📷</button>';
+    if (t.evidence_id) html += '<button class="btn btn-sm btn-outline" style="padding:3px 8px" data-t="'+snapData+'" onclick="_showEmpTaskSnap(this)">Chi tiết</button>';
     html += '</div>';
     html += '<div style="display:flex;gap:4px">';
     html += '<button class="btn btn-sm btn-outline" onclick="openEditTask(\''+t.id+'\',\''+job.id+'\')">Sửa</button>';
