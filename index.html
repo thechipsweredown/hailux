@@ -162,7 +162,7 @@ textarea{resize:vertical;min-height:80px}
 .dag-wrap{overflow-x:auto;padding:20px 4px;background:#f8f9ff;border-radius:10px;margin-bottom:20px}
 .dag-flow{display:flex;align-items:center;gap:0;min-width:max-content;padding:0 8px}
 .dag-node{display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;cursor:pointer}
-.dag-box{padding:10px 14px;border-radius:10px;font-size:.8rem;font-weight:600;text-align:center;min-width:100px;max-width:130px;border:2px solid transparent;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.dag-box{padding:10px 14px;border-radius:10px;font-size:.8rem;font-weight:600;text-align:center;width:110px;height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid transparent;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden}
 .dag-box:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.15)}
 .dag-box.done{background:#e8f5e9;border-color:#4CAF50;color:#2e7d32}
 .dag-box.in_progress{background:#fff3e0;border-color:#FF9800;color:#e65100}
@@ -858,6 +858,8 @@ function renderTasksHtml(tasks, tst, job) {
     html += '</div>';
     html += '<div class="task-acts">';
     html += (st?'<span class="badge" style="background:'+st.color+'22;color:'+st.color+'">'+st.label+'</span>':'');
+    var snapData = esc(JSON.stringify({id:t.id,name:t.name,order:t.order||i+1,assignee:asgn?asgn.name:'Chưa phân công',completed_at:t.completed_at||'',evidence_id:t.evidence_id||'',status_label:st?st.label:'',status_color:st?st.color:'#999'}));
+    if (t.evidence_id) html += ' <button class="btn btn-sm btn-outline" data-t="'+snapData+'" onclick="_showEmpTaskSnap(this)">📷 Ảnh</button>';
     html += ' <button class="btn btn-sm btn-outline" onclick="openEditTask(\''+t.id+'\',\''+job.id+'\')">Sửa</button>';
     html += ' <button class="btn btn-sm btn-ghost" onclick="delTask(\''+t.id+'\',\''+job.id+'\')">Xóa</button>';
     html += '</div></div>';
