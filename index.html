@@ -1582,25 +1582,50 @@ function openEmpJobView(jobId) {
         html += '<div class="detail-box" style="margin-bottom:16px"><h4>Hạng mục sửa</h4><p style="font-size:.88rem;white-space:pre-line">'+esc(job.repair_scope)+'</p></div>';
       }
 
-      // DAG
-      html += '<div style="font-weight:600;margin-bottom:8px">Luồng công việc</div>';
-      html += renderDAG(job.tasks, tst);
-
-      // Task list — click để xem chi tiết
-      html += '<div style="font-weight:600;margin:12px 0 8px">Tất cả task ('+job.tasks.length+')</div>';
+      // Flow tasks — desktop dùng DAG, mobile dùng vertical list
       var sorted = job.tasks.slice().sort(function(a,b){ return Number(a.order)-Number(b.order); });
+      if (!isMobile()) {
+        html += '<div style="font-weight:600;margin-bottom:8px">Luồng công việc</div>';
+        html += renderDAG(job.tasks, tst);
+        html += '<div style="font-weight:600;margin:12px 0 8px">Chi tiết task</div>';
+      } else {
+        html += '<div style="font-weight:600;margin-bottom:10px">Luồng công việc ('+sorted.length+' bước)</div>';
+      }
       sorted.forEach(function(t, i) {
         var st   = tst.filter(function(s){ return s.id===t.status_id; })[0];
         var asgn = APP.user_by_id(t.assignee_id);
         var isMe = t.assignee_id === myId;
-        html += '<div class="task-item" style="cursor:pointer;'+(isMe?'border-color:#1a3a8f;background:#eef2ff':'')+'" onclick="_showEmpTaskSnap(this)"'
-          +' data-t="'+esc(JSON.stringify({id:t.id,name:t.name,order:t.order||i+1,assignee:asgn?asgn.name:'Chưa phân công',completed_at:t.completed_at||'',evidence_id:t.evidence_id||'',status_label:st?st.label:'',status_color:st?st.color:'#999'}))+'">';
-        html += '<div class="task-num" style="'+(isMe?'background:#0d1b4b':'')+'">'+( t.order||i+1)+'</div>';
-        html += '<div class="task-info"><div class="task-name">'+esc(t.name||'—')+(isMe?' <span style="color:#0d1b4b;font-size:.75rem">← của bạn</span>':'')+'</div>';
-        html += '<div class="task-meta">'+esc(asgn?asgn.name:'Chưa phân công')+'</div></div>';
-        html += (st?'<span class="badge" style="background:'+st.color+'22;color:'+st.color+'">'+st.label+'</span>':'');
-        html += '<span style="color:#ccc;margin-left:4px;font-size:.85rem">›</span>';
-        html += '</div>';
+        var norm = (st ? st.label : '').toLowerCase().replace(/\s/g,'');
+        var isDone = norm==='hoànthành'||norm==='đãxong';
+        var isIP   = norm==='đanglàm';
+        var dotColor = isDone ? '#4CAF50' : isIP ? '#FF9800' : '#bdbdbd';
+        var snapData = esc(JSON.stringify({id:t.id,name:t.name,order:t.order||i+1,assignee:asgn?asgn.name:'Chưa phân công',completed_at:t.completed_at||'',evidence_id:t.evidence_id||'',status_label:st?st.label:'',status_color:st?st.color:'#999'}));
+
+        if (isMobile()) {
+          // Vertical timeline card
+          html += '<div style="display:flex;gap:10px;margin-bottom:6px;cursor:pointer" onclick="_showEmpTaskSnap(this)" data-t="'+snapData+'">';
+          html += '<div style="display:flex;flex-direction:column;align-items:center;gap:0;width:20px;flex-shrink:0">';
+          html += '<div style="width:18px;height:18px;border-radius:50%;background:'+dotColor+';display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0">'+(isDone?'✓':isIP?'▶':(t.order||i+1))+'</div>';
+          if (i < sorted.length-1) html += '<div style="width:2px;flex:1;background:#eee;min-height:20px;margin:2px 0"></div>';
+          html += '</div>';
+          html += '<div style="flex:1;min-width:0;padding-bottom:8px;border-radius:10px;'+(isMe?'background:#eef2ff;padding:8px 10px;':'padding:2px 0 8px')+(isDone?'opacity:.75':'')+'">';
+          html += '<div style="font-size:.88rem;font-weight:600;color:'+(isMe?'#0d1b4b':'#222')+'">'+esc(t.name||'—')+(isMe?' <span style="font-size:.7rem;color:#0d1b4b">← bạn</span>':'')+'</div>';
+          html += '<div style="font-size:.75rem;color:#999;margin-top:2px">'+esc(asgn?asgn.name:'Chưa phân công');
+          if (st) html += ' · <span style="color:'+st.color+'">'+st.label+'</span>';
+          html += '</div>';
+          if (t.evidence_id) { var eCnt = t.evidence_id.split(',').filter(Boolean).length; html += '<div style="font-size:.72rem;color:#aaa;margin-top:2px">📷 '+eCnt+' ảnh</div>'; }
+          html += '</div>';
+          html += '<div style="color:#ddd;font-size:1rem;align-self:center">›</div>';
+          html += '</div>';
+        } else {
+          html += '<div class="task-item" style="cursor:pointer;'+(isMe?'border-color:#1a3a8f;background:#eef2ff':'')+'" onclick="_showEmpTaskSnap(this)" data-t="'+snapData+'">';
+          html += '<div class="task-num" style="'+(isMe?'background:#0d1b4b':'')+'">'+( t.order||i+1)+'</div>';
+          html += '<div class="task-info"><div class="task-name">'+esc(t.name||'—')+(isMe?' <span style="color:#0d1b4b;font-size:.75rem">← của bạn</span>':'')+'</div>';
+          html += '<div class="task-meta">'+esc(asgn?asgn.name:'Chưa phân công')+'</div></div>';
+          html += (st?'<span class="badge" style="background:'+st.color+'22;color:'+st.color+'">'+st.label+'</span>':'');
+          html += '<span style="color:#ccc;margin-left:4px;font-size:.85rem">›</span>';
+          html += '</div>';
+        }
       });
 
       html += '</div>';
